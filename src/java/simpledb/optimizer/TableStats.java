@@ -242,4 +242,11 @@ public class TableStats {
         return this.totalTuples;
     }
 
+    /**
+     * return the skew of given column in this table
+     */
+    public double getSkewForColumn(int i) {
+        return intHistograms.get(i).getSkew();
+    }
+
 }

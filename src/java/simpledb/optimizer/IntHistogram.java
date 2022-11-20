@@ -14,6 +14,14 @@ public class IntHistogram {
     private int ntups; 
     private double width; // bucket width
 
+    private double sum = 0.0; 
+    private double squaredSum = 0.0;
+    private double cubedSum = 0.0;
+
+    private double mean = 0.0;
+    private double sd = 0.0;
+    private double skew = 0.0;
+
     /**
      * Create a new IntHistogram.
      * <p>
@@ -60,6 +68,21 @@ public class IntHistogram {
         int i = getBucket(v);
         this.bucketArr[i]++;
         this.ntups++;
+
+        this.sum += v;
+        this.squaredSum += Math.pow(v, 2.0);
+        this.cubedSum += Math.pow(v, 3.0);
+
+        this.mean = sum / ntups;
+        this.sd = Math.sqrt((squaredSum - Math.pow(mean, 2)) / ntups);
+        this.skew = (cubedSum - 3 * mean * Math.pow(sd, 2) - Math.pow(mean, 3)) / Math.pow(sd, 3);
+    }
+
+    /**
+     * @return the skewness of the histogram
+     */
+    public double getSkew() {
+        return skew;
     }
 
     /**
@@ -79,7 +102,7 @@ public class IntHistogram {
         switch(op) {
             case EQUALS:
                 if(v < min || v > max) return 0.0;
-                return (double ) bucketArr[i] / ntups;
+                return (double) bucketArr[i] / ntups;
             case NOT_EQUALS: 
                 return 1 - this.estimateSelectivity(Predicate.Op.EQUALS, v);
             case GREATER_THAN: 
