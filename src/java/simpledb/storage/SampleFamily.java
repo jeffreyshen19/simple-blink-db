@@ -2,9 +2,15 @@ package simpledb.storage;
 
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.concurrent.ThreadLocalRandom;
 
+import simpledb.common.Database;
 import simpledb.common.DbException;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
@@ -17,8 +23,9 @@ import simpledb.transaction.TransactionId;
  */
 public class SampleFamily {
     final List<Integer> sampleSizes;
+    final List<File> files;
     final TupleDesc stratifiedColumns;
-    final List<DbFile> samples = null;
+    final List<DbFile> samples;
 
 
     /**
@@ -28,21 +35,75 @@ public class SampleFamily {
      * @param stratifiedColumns - columns to stratify sample on
      *                       if stratifiedColumns is null, then this is a uniform sample
      * @param origFile - the file from which the samples are being created from 
+     * @throws TransactionAbortedException 
+     * @throws DbException 
+     * @throws NoSuchElementException 
+     * @throws IOException 
      */
-    public SampleFamily(List<Integer> sampleSizes, TupleDesc stratifiedColumns, DbFile origFile) {
+    public SampleFamily(List<Integer> sampleSizes, List<File> files, TupleDesc stratifiedColumns, DbFile origFile) throws NoSuchElementException, DbException, TransactionAbortedException, IOException {
         this.sampleSizes = sampleSizes;
+        this.files = files;
         this.stratifiedColumns = stratifiedColumns;
-        //this.samples is made by the two funcs below
-        if (this.stratifiedColumns == null) {
-            createUniformSamples(origFile);
-        } else {
-            createStratifiedSamples(origFile);
+        
+        String origName = Database.getCatalog().getTableName(origFile.getId());
+        
+        // Generate DbFiles for each sample family 
+        this.samples = new ArrayList<>();
+        for(int i = 0; i < sampleSizes.size(); i++) {
+            DbFile db = new HeapFile(files.get(i), origFile.getTupleDesc());
+            Database.getCatalog().addTable(db, origName + "-sample-" + i); //TODO: deal with catalog when regenerating sample
         }
+        
+        // Populate the samples
+        if (this.stratifiedColumns == null) createUniformSamples(origFile);
+        else createStratifiedSamples(origFile);
     }
     
 
-    private void createUniformSamples(DbFile origFile) {
-        return;
+    private void createUniformSamples(DbFile origFile) throws NoSuchElementException, DbException, TransactionAbortedException, IOException {
+        
+        // Sample k integers from origFile using reservoir sampling (O(n))
+        int k = sampleSizes.get(sampleSizes.size() - 1); // k is the size of the *largest* sample
+        ArrayList<Tuple> reservoir = new ArrayList<>(k);
+        
+        DbFileIterator iterator = origFile.iterator(null);
+        iterator.open();
+        
+        int i = 0;
+        while(iterator.hasNext()) {
+            Tuple tuple = iterator.next();
+            
+            if(i < k) reservoir.set(i, tuple);
+            else {
+                int j = ThreadLocalRandom.current().nextInt(0, i + 1); // random integer in range [0, i]
+                if(j < k) reservoir.set(j, tuple);
+            }      
+            
+            i++;
+        }
+        
+        // Divide the k tuples into the correct sample files 
+        Collections.shuffle(reservoir);
+        int sampleI = 0; 
+        int dbId = samples.get(sampleI).getId();
+        int sampleSize = sampleSizes.get(sampleI);
+        
+        
+        for(i = 0; i < k; i++) {
+            // If sampleSizes are [a, b, c, ...],
+            // add tuples with i < a to samples[0], tuples with i < b to samples[1], etc
+            if(i == sampleSize) {
+                sampleI++;
+                dbId = samples.get(sampleI).getId();
+                sampleSize = sampleSizes.get(sampleI);
+            }
+            
+            Tuple tuple = reservoir.get(i);
+            Database.getBufferPool().insertTuple(null, dbId, tuple);
+            
+        }
+             
+        iterator.close();         
     }
 
     private void createStratifiedSamples(DbFile origFile) {
