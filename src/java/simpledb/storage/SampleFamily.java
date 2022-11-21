@@ -1,5 +1,7 @@
 package simpledb.storage;
 
+import static org.junit.Assert.assertTrue;
+
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -13,10 +15,10 @@ import simpledb.transaction.TransactionId;
  * Samples are stored as separate DBFiles, 
  * similarly to BlinkDB's description of samples building on top of each other
  */
-public class SampleWrapper {
+public class SampleFamily {
     final List<Integer> sampleSizes;
     final TupleDesc stratifiedColumns;
-    final List<DbFile> samples;
+    final List<DbFile> samples = null;
 
 
     /**
@@ -27,7 +29,7 @@ public class SampleWrapper {
      *                       if stratifiedColumns is null, then this is a uniform sample
      * @param origFile - the file from which the samples are being created from 
      */
-    public SampleWrapper(List<Integer> sampleSizes, TupleDesc stratifiedColumns, DbFile origFile) {
+    public SampleFamily(List<Integer> sampleSizes, TupleDesc stratifiedColumns, DbFile origFile) {
         this.sampleSizes = sampleSizes;
         this.stratifiedColumns = stratifiedColumns;
         //this.samples is made by the two funcs below
@@ -52,16 +54,15 @@ public class SampleWrapper {
     }
 
     class SampleIterator implements DbFileIterator {
-        private int sampleSize;
+        private int maxSample;
         private boolean opened;
-        private int i = 0;
         private int sampleIndex = 0;
         private TransactionId tid;
         private DbFile currSampFile;
         private DbFileIterator currSampFileIterator;
 
-        public SampleIterator(int sampleSize, TransactionId tid) {
-            this.sampleSize = sampleSize;
+        public SampleIterator(int maxSample, TransactionId tid) {
+            this.maxSample = maxSample;
             this.tid = tid;
             currSampFile = samples.get(sampleIndex);
             currSampFileIterator = currSampFile.iterator(this.tid);
@@ -70,9 +71,9 @@ public class SampleWrapper {
         @Override
         public boolean hasNext() throws DbException, TransactionAbortedException{
             if (!opened) return false;
-            if (i > sampleSize) return false;
             if (currSampFileIterator.hasNext()) return true;
-            return sampleIndex < samples.size();
+            //if sampleIndex = maxSample, then was covered by checking if curriterator has next
+            return sampleIndex < maxSample;
         }
 
         @Override
@@ -80,7 +81,6 @@ public class SampleWrapper {
             if (!hasNext()) throw new NoSuchElementException("No more tuples");
             
             if (currSampFileIterator.hasNext()) {
-                this.i++;
                 return currSampFileIterator.next();
             }
             if (sampleIndex == samples.size() - 1) throw new NoSuchElementException("No more tuples");
@@ -91,7 +91,6 @@ public class SampleWrapper {
             currSampFileIterator = currSampFile.iterator(this.tid);
             currSampFileIterator.open();
 
-            this.i++;
             return currSampFileIterator.next();
         }
 
@@ -109,7 +108,6 @@ public class SampleWrapper {
 
         @Override
         public void rewind() {
-            this.i = 0;
             this.sampleIndex = 0;
             currSampFile = samples.get(sampleIndex);
             currSampFileIterator = currSampFile.iterator(tid);
@@ -118,12 +116,12 @@ public class SampleWrapper {
 
     /**
      * Create an iterator for this sample
-     * @param sampleSize - the size sample to be pulled from this samplewrapper
+     * @param sampleSize - the max size sample to pull the query from - must be less than number of samples given by initializer
      * @param tid - transaction id
      * @return - an iterator that will return sampleSize number of tuples 
      */
-    public SampleIterator iterator(int sampleSize, TransactionId tid) {
-        return new SampleIterator(sampleSize, tid);
+    public SampleIterator iterator(int maxSample, TransactionId tid) {
+        return new SampleIterator(maxSample, tid);
     }
     
 }
