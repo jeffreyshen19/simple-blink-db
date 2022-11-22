@@ -5,6 +5,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -52,6 +53,7 @@ public class SampleFamily {
         for(int i = 0; i < sampleSizes.size(); i++) {
             DbFile db = new HeapFile(files.get(i), origFile.getTupleDesc());
             Database.getCatalog().addTable(db, origName + "-sample-" + i); //TODO: deal with catalog when regenerating sample
+            this.samples.add(db);
         }
         
         // Populate the samples
@@ -59,12 +61,15 @@ public class SampleFamily {
         else createStratifiedSamples(origFile);
     }
     
-
+    public List<DbFile> getSamples() {
+        return this.samples;
+    }
+    
     private void createUniformSamples(DbFile origFile) throws NoSuchElementException, DbException, TransactionAbortedException, IOException {
         
         // Sample k integers from origFile using reservoir sampling (O(n))
         int k = sampleSizes.get(sampleSizes.size() - 1); // k is the size of the *largest* sample
-        ArrayList<Tuple> reservoir = new ArrayList<>(k);
+        List<Tuple> reservoir = Arrays.asList(new Tuple[k]);
         
         DbFileIterator iterator = origFile.iterator(null);
         iterator.open();
