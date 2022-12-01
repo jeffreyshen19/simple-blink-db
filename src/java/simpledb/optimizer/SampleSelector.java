@@ -66,6 +66,7 @@ public class SampleSelector {
      */
     public int selectSampleSizeError(SampleFamily sampleFamily, OpIterator query, double errorTarget) {
         return 0;
+        //TODO: yun, when writing this, you can assume that the functions to run a query actually work
     }
     
     /**
