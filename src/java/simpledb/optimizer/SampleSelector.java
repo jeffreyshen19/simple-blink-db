@@ -3,6 +3,7 @@ package simpledb.optimizer;
 import java.util.List;
 
 import simpledb.common.Database;
+import simpledb.execution.Query;
 import simpledb.storage.SampleFamily;
 
 public class SampleSelector {
@@ -22,10 +23,11 @@ public class SampleSelector {
      * TODO: Jeffrey
      * Given a sampleFamily and error target, return the estimated size of the sample satisfying this target
      * @param sampleFamily
+     * @param q 
      * @param errorTarget
      * @return n, the number of rows to read from the sample
      */
-    public int selectSampleSizeError(SampleFamily sampleFamily, double errorTarget) {
+    public int selectSampleSizeError(SampleFamily sampleFamily, Query q, double errorTarget) {
         return 0;
     }
     
@@ -33,10 +35,11 @@ public class SampleSelector {
      * TODO: Yun
      * Given a sampleFamily and latency target, return the estimated size of the sample satisfying this target
      * @param sampleFamily
+     * @param q 
      * @param latencyTarget
      * @return n, the number of rows to read from the sample
      */
-    public int selectSampleSizeLatency(SampleFamily sampleFamily, double latencyTarget) {
+    public int selectSampleSizeLatency(SampleFamily sampleFamily, Query q, double latencyTarget) {
         return 0;
     }
     
