@@ -25,7 +25,7 @@ import simpledb.transaction.TransactionId;
 public class SampleFamily {
     final List<Integer> sampleSizes;
     final List<File> files;
-    final TupleDesc stratifiedColumns;
+    final TupleDesc stratifiedColumns; // TODO: this should be changed to a QueryColumnSet
     final List<DbFile> samples;
 
 
