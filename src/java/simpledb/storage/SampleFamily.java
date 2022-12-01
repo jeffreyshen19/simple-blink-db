@@ -27,7 +27,7 @@ public class SampleFamily {
     final List<File> files;
     final TupleDesc stratifiedColumns; // TODO: this should be changed to a QueryColumnSet
     final List<DbFile> samples;
-
+    final TupleDesc td;
 
     /**
      * Create SampleWrapper for a table
@@ -47,6 +47,7 @@ public class SampleFamily {
         this.stratifiedColumns = stratifiedColumns;
         
         String origName = Database.getCatalog().getTableName(origFile.getId());
+        this.td = origFile.getTupleDesc();
         
         // Generate DbFiles for each sample family 
         this.samples = new ArrayList<>();
@@ -63,6 +64,10 @@ public class SampleFamily {
     
     public List<DbFile> getSamples() {
         return this.samples;
+    }
+    
+    public TupleDesc getTupleDesc() {
+        return this.td;
     }
     
     private void createUniformSamples(DbFile origFile) throws NoSuchElementException, DbException, TransactionAbortedException, IOException {
@@ -119,67 +124,6 @@ public class SampleFamily {
         return this.stratifiedColumns == null;
     }
 
-    class SampleIterator implements DbFileIterator {
-        private int maxSample;
-        private boolean opened;
-        private int sampleIndex = 0;
-        private TransactionId tid;
-        private DbFile currSampFile;
-        private DbFileIterator currSampFileIterator;
-
-        public SampleIterator(int maxSample, TransactionId tid) {
-            this.maxSample = maxSample;
-            this.tid = tid;
-            currSampFile = samples.get(sampleIndex);
-            currSampFileIterator = currSampFile.iterator(this.tid);
-        }
-
-        @Override
-        public boolean hasNext() throws DbException, TransactionAbortedException{
-            if (!opened) return false;
-            if (currSampFileIterator.hasNext()) return true;
-            //if sampleIndex = maxSample, then was covered by checking if curriterator has next
-            return sampleIndex < maxSample;
-        }
-
-        @Override
-        public Tuple next() throws DbException, TransactionAbortedException {
-            if (!hasNext()) throw new NoSuchElementException("No more tuples");
-            
-            if (currSampFileIterator.hasNext()) {
-                return currSampFileIterator.next();
-            }
-            if (sampleIndex == samples.size() - 1) throw new NoSuchElementException("No more tuples");
-
-            currSampFileIterator.close();
-            sampleIndex++;
-            currSampFile = samples.get(sampleIndex);
-            currSampFileIterator = currSampFile.iterator(this.tid);
-            currSampFileIterator.open();
-
-            return currSampFileIterator.next();
-        }
-
-        @Override
-        public void open() throws DbException, TransactionAbortedException{
-            this.opened = true;
-            currSampFileIterator.open();
-        }
-
-        @Override
-        public void close() {
-            this.opened = false;
-            currSampFileIterator.close();
-        }
-
-        @Override
-        public void rewind() {
-            this.sampleIndex = 0;
-            currSampFile = samples.get(sampleIndex);
-            currSampFileIterator = currSampFile.iterator(tid);
-        }
-    }
-
     /**
      * Create an iterator for this sample
      * @param sampleSize - the max size sample to pull the query from - must be less than number of samples given by initializer
@@ -187,7 +131,7 @@ public class SampleFamily {
      * @return - an iterator that will return sampleSize number of tuples 
      */
     public SampleIterator iterator(int maxSample, TransactionId tid) {
-        return new SampleIterator(maxSample, tid);
+        return new SampleIterator(samples, maxSample, tid);
     }
     
 }

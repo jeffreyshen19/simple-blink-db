@@ -72,4 +72,5 @@ public class SampleTest {
         
         assertEquals((int) sampleSizes.get(sampleSizes.size() - 1), sampledTuples.size()); // There are no repeated tuples
     }
+    
 }
