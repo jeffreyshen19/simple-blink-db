@@ -174,7 +174,7 @@ public class SampleFamily {
         int sampleSize = sampleSizes.get(sampleI);
         
         
-        for(i = 0; i < k; i++) {
+        for(i = 0; i < maxSize; i++) {
             // If sampleSizes are [a, b, c, ...],
             // add tuples with i < a to samples[0], tuples with i < b to samples[1], etc
             if(i == sampleSize) {
