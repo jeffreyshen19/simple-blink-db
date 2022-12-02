@@ -17,6 +17,16 @@ public class QueryColumnSet {
         columns = new HashSet<>(Arrays.asList(c));
     }
     
+    public Set<String> getColumns() {
+    	Set<String> copyColumns = new HashSet<>();
+    	copyColumns.addAll(columns);
+    	return copyColumns;
+    }
+    
+    public int getNumCols() {
+    	return columns.size();
+    }
+    
     @Override
     public int hashCode() {
         int result = 0;

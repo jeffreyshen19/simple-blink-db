@@ -9,10 +9,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 import simpledb.common.Database;
 import simpledb.common.DbException;
+import simpledb.optimizer.QueryColumnSet;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
@@ -25,7 +28,7 @@ import simpledb.transaction.TransactionId;
 public class SampleFamily {
     final List<Integer> sampleSizes;
     final List<File> files;
-    final TupleDesc stratifiedColumns; // TODO: this should be changed to a QueryColumnSet
+    final QueryColumnSet stratifiedColumns; 
     final List<DbFile> samples;
     final TupleDesc td;
 
@@ -116,8 +119,76 @@ public class SampleFamily {
         iterator.close();         
     }
 
-    private void createStratifiedSamples(DbFile origFile) {
-        return;   
+    private void createStratifiedSamples(DbFile origFile, int cap) {
+    	
+    	// get indices of the stratified columns
+    	
+    	List<Integer> colIndices = Arrays.asList(new Integer[this.stratifiedColumns.getNumCols()]);
+    	Set<String> colNames = this.stratifiedColumns.getColumns();
+    	for (int i = 0; i < this.td.numFields(); i++) {
+    		if (colNames.contains(this.td.getFieldName(i))) {
+    			colIndices.add(i);
+    		}
+    	}
+    	
+    	// get all columns from query column set, iterate through it, get the i using td
+    	
+    	int maxSize = sampleSizes.get(sampleSizes.size() - 1); // k is the size of the *largest* sample
+        List<Tuple> reservoir = Arrays.asList(new Tuple[maxSize]);
+        ConcurrentHashMap<String, Integer> columnValCount = new ConcurrentHashMap<>();
+    	
+    	DbFileIterator iterator = origFile.iterator(null);
+        iterator.open();
+        
+        int i = 0;
+        while(iterator.hasNext()) {
+            Tuple tuple = iterator.next();
+        	StringBuilder currStratColVal = new StringBuilder(); // current stratified columns' value
+        	
+            // check if we have reached the cap for given combination of stratifiedColumns for this sample
+            for (Integer index : colIndices) {
+            	currStratColVal.append(tuple.getField(index).toString());
+            }
+            
+            if (columnValCount.containsKey(currStratColVal.toString()) && columnValCount.get(currStratColVal.toString()) == cap) {
+            	continue;
+            }
+            
+            columnValCount.putIfAbsent(currStratColVal.toString(), 0);
+            columnValCount.put(currStratColVal.toString(), columnValCount.get(currStratColVal.toString()) + 1);
+            
+            
+            if(i < maxSize) reservoir.set(i, tuple);
+            else {
+                int j = ThreadLocalRandom.current().nextInt(0, i + 1); // random integer in range [0, i]
+                if(j < maxSize) reservoir.set(j, tuple);
+            }      
+            
+            i++;
+        }
+        
+        // Divide the k tuples into the correct sample files 
+        Collections.shuffle(reservoir);
+        int sampleI = 0; 
+        int dbId = samples.get(sampleI).getId();
+        int sampleSize = sampleSizes.get(sampleI);
+        
+        
+        for(i = 0; i < k; i++) {
+            // If sampleSizes are [a, b, c, ...],
+            // add tuples with i < a to samples[0], tuples with i < b to samples[1], etc
+            if(i == sampleSize) {
+                sampleI++;
+                dbId = samples.get(sampleI).getId();
+                sampleSize = sampleSizes.get(sampleI);
+            }
+            
+            Tuple tuple = reservoir.get(i);
+            Database.getBufferPool().insertTuple(null, dbId, tuple);
+            
+        }
+             
+        iterator.close();         
     }
 
     public boolean isStratified() {
