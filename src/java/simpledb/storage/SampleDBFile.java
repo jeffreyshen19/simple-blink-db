@@ -1,84 +1,40 @@
 package simpledb.storage;
 
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
-
 import simpledb.common.Database;
 import simpledb.common.DbException;
+import simpledb.common.Debug;
+import simpledb.common.Permissions;
 import simpledb.optimizer.QueryColumnSet;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
-/**
- * SampleWrapper is a wrapper for multiple DbFiles to store different sized samples in one object
- * The samples inside are part of the same sample family
- * Samples are stored as separate DBFiles, 
- * similarly to BlinkDB's description of samples building on top of each other
- */
-public class SampleFamily {
-    final List<Integer> sampleSizes;
-    final List<File> files;
-    final QueryColumnSet stratifiedColumns; 
-    final List<DbFile> samples;
-    final TupleDesc td;
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
 
-    /**
-     * Create SampleWrapper for a table
-     * 
-     * @param sampleSizes - list of sample sizes - must be in increasing order
-     * @param stratifiedColumns - columns to stratify sample on
-     *                       if stratifiedColumns is null, then this is a uniform sample
-     * @param origFile - the file from which the samples are being created from 
-     * @throws TransactionAbortedException 
-     * @throws DbException 
-     * @throws NoSuchElementException 
-     * @throws IOException 
-     */
-    public SampleFamily(List<Integer> sampleSizes, List<File> files, QueryColumnSet stratifiedColumns, DbFile origFile) throws NoSuchElementException, DbException, TransactionAbortedException, IOException {
-        this.sampleSizes = sampleSizes;
-        this.files = files;
+public class SampleDBFile implements DbFile{
+    private final File f;
+    private final TupleDesc td;
+    private final QueryColumnSet stratifiedColumns;
+    private final List<Integer> sampleSizes;
+
+    public SampleDBFile(File f, List<Integer> sampleSizes, QueryColumnSet stratifiedColumns, DbFile origFile) {
+        this.f = f;
         this.stratifiedColumns = stratifiedColumns;
-        
-        String origName = Database.getCatalog().getTableName(origFile.getId());
+        this.sampleSizes = sampleSizes;
+
         this.td = origFile.getTupleDesc();
-        
-        // Generate DbFiles for each sample family 
-        this.samples = new ArrayList<>();
-        for(int i = 0; i < sampleSizes.size(); i++) {
-            DbFile db = new HeapFile(files.get(i), origFile.getTupleDesc());
-            Database.getCatalog().addTable(db, origName + "-sample-" + i); //TODO: deal with catalog when regenerating sample
-            this.samples.add(db);
-        }
-        
-        // Populate the samples
+
         if (this.stratifiedColumns == null) createUniformSamples(origFile);
-        else createStratifiedSamples(origFile);
-    }
-    
-    public List<DbFile> getSamples() {
-        return this.samples;
-    }
-    
-    public TupleDesc getTupleDesc() {
-        return this.td;
+        else createStratifiedSamples(origFile); // TODO: figure out the cap stuff @Yun
     }
 
-    public QueryColumnSet getColumnSet() {
-        return this.stratifiedColumns;
-    }
-    
     private void createUniformSamples(DbFile origFile) throws NoSuchElementException, DbException, TransactionAbortedException, IOException {
-        
+        // TODO: adapt to new data structure
+
         // Sample k integers from origFile using reservoir sampling (O(n))
         int k = sampleSizes.get(sampleSizes.size() - 1); // k is the size of the *largest* sample
         List<Tuple> reservoir = Arrays.asList(new Tuple[k]);
@@ -124,7 +80,7 @@ public class SampleFamily {
     }
 
     private void createStratifiedSamples(DbFile origFile, int cap) {
-    	
+    	// TODO: adapt to new data structure
     	// get indices of the stratified columns
     	
     	List<Integer> colIndices = Arrays.asList(new Integer[this.stratifiedColumns.getNumCols()]);
@@ -195,18 +151,125 @@ public class SampleFamily {
         iterator.close();         
     }
 
+
+    public File getFile() {
+        return this.f;
+    }
+
+    public int getId() {
+        return f.getAbsoluteFile().hashCode();
+    }
+
+    public TupleDesc getTupleDesc() {
+        return this.td;
+    }
+
+    public QueryColumnSet getStratifiedColumnSet() {
+        return this.stratifiedColumns;
+    }
+
+    public List<Integer> getSampleSizes() {
+        return this.sampleSizes;
+    }
+
+    public int numPages() {
+        return (int) (f.length() / BufferPool.getPageSize());
+    }
+
     public boolean isStratified() {
         return this.stratifiedColumns == null;
     }
 
-    /**
-     * Create an iterator for this sample
-     * @param sampleSize - the max size sample to pull the query from - must be less than number of samples given by initializer
-     * @param tid - transaction id
-     * @return - an iterator that will return sampleSize number of tuples 
-     */
-    public SampleIterator iterator(int maxSample, TransactionId tid) {
-        return new SampleIterator(samples, maxSample, tid);
-    }
+    // see DbFile.java for javadocs
+    public Page readPage(PageId pid) {
+        RandomAccessFile raf;
+        try {
+            raf = new RandomAccessFile(this.f, "rw");
+        } catch (FileNotFoundException e2) {
+            throw new IllegalArgumentException("");
+        }
+        
+        byte[] data = new byte[BufferPool.getPageSize()];
+        int offset = pid.getPageNumber() * BufferPool.getPageSize();
+        try {
+            raf.seek(offset);
+            raf.read(data, 0, data.length);
+            raf.close();
+        } catch (IOException e1) {
+            throw new IllegalArgumentException("Page does not exist in file");
+        }
     
+        try {
+            return new HeapPage((HeapPageId) pid, data);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Page does not exist in file");
+        }
+    }
+
+    // see DbFile.java for javadocs
+    public void writePage(Page page) throws IOException {
+        int pgNo = page.getId().getPageNumber();
+
+        RandomAccessFile raf;
+        try {
+            raf = new RandomAccessFile(this.f, "rw");
+        } catch (FileNotFoundException e2) {
+            throw new IllegalArgumentException("");
+        }
+        
+        raf.seek(pgNo * BufferPool.getPageSize());
+        raf.write(page.getPageData());
+        raf.close();
+    }
+
+    // see DbFile.java for javadocs
+    public List<Page> insertTuple(TransactionId tid, Tuple t)
+            throws DbException, IOException, TransactionAbortedException {
+        
+        int n = numPages();
+        HeapPage page;
+        
+        for(int i = 0; i < n; i++) { // Go through all pages, find one with an empty slot 
+            page = (HeapPage) Database.getBufferPool().getPage(tid, new HeapPageId(this.getId(), i), Permissions.READ_WRITE);
+            if (page.getNumUnusedSlots() > 0) {
+                page.insertTuple(t);
+                return Arrays.asList(page);
+            }
+        }
+        
+        // Create a new page
+        page = new HeapPage(new HeapPageId(this.getId(), n), HeapPage.createEmptyPageData());
+        page.insertTuple(t);
+        writePage(page);
+        
+        return Arrays.asList(page);
+    }
+
+    // see DbFile.java for javadocs
+    public List<Page> deleteTuple(TransactionId tid, Tuple t) throws DbException,
+            TransactionAbortedException {
+        HeapPage page;
+        try {
+            page = (HeapPage) Database.getBufferPool().getPage(tid, t.getRecordId().getPageId(), Permissions.READ_WRITE);
+        }
+        catch (IllegalArgumentException e) {
+            throw new DbException("Tuple does not belong to this file");
+        }
+        
+        page.deleteTuple(t);
+        
+        return Arrays.asList(page);
+    }
+
+    // this iterator should not get called- is only here to not throw errors
+    public DbFileIterator iterator(TransactionId tid) {
+        return new SampleIterator(this.getId(), tid, this.numPages(), this.sampleSizes.get(sampleSizes.size() - 1));
+    }
+
+    // this iterator is called for actually generating tuples
+    // you must know that it is an existing 
+    public DbFileIterator iterator(TransactionId tid, int cutoff) {
+        return new SampleIterator(this.getId(), tid, this.numPages(), cutoff);
+    }
+
 }

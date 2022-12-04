@@ -7,6 +7,8 @@ import simpledb.common.DbException;
 import simpledb.execution.OpIterator;
 import simpledb.execution.Operator;
 import simpledb.execution.Query;
+import simpledb.storage.DbFile;
+import simpledb.storage.DbFileIterator;
 import simpledb.storage.SampleFamily;
 import simpledb.transaction.TransactionAbortedException;
 
@@ -19,7 +21,19 @@ public class SampleSelector {
      * @return SampleFamily
      */
     public SampleFamily selectSample(QueryColumnSet qcs) {
+        // still working on it rn - Victor
         List<SampleFamily> sampleFamilies = Database.getSampleFamilies();
+
+        for (SampleFamily sf : sampleFamilies) {
+            if (sf.getColumnSet().getColumns().contains(qcs.getColumns())) {
+                return sf;
+            }
+            DbFile firstSample = sf.getSamples().get(0);
+            DbFileIterator sampleIterator = firstSample.iterator(null);
+            
+        }
+
+        
         throw new UnsupportedOperationException();
     }
     
