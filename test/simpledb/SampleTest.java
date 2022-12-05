@@ -16,12 +16,13 @@ import org.junit.Test;
 
 import simpledb.common.Database;
 import simpledb.common.Utility;
+import simpledb.optimizer.QueryColumnSet;
 import simpledb.storage.BufferPool;
 import simpledb.storage.DbFile;
 import simpledb.storage.DbFileIterator;
 import simpledb.storage.HeapFile;
 import simpledb.storage.HeapFileEncoder;
-import simpledb.storage.SampleFamily;
+import simpledb.storage.SampleDBFile;
 import simpledb.storage.Tuple;
 import simpledb.storage.TupleDesc;
 import simpledb.systemtest.SystemTestUtil;
@@ -44,31 +45,30 @@ public class SampleTest {
     
     @Test
     public void testUniformSample() throws Exception {
+        // Create sample table and add it to catalog
         List<Integer> sampleSizes = Arrays.asList(10, 100, 1000);
-        List<File> files = new ArrayList<>();
-        for(int i = 0; i < sampleSizes.size(); i++) {
-            File f = File.createTempFile("sample-table-" + i, ".dat");
-            f.deleteOnExit();
-            files.add(f);
-        }
+        File f = File.createTempFile("sample-table", "dat");
+        f.deleteOnExit();
+        SampleDBFile sf = new SampleDBFile(f, sampleSizes, null, this.hf);
+        Database.getCatalog().addTable(sf, "sample-table", "", true);
         
-        SampleFamily sf = new SampleFamily(sampleSizes, files, null, this.hf);
+        // Populate sample table
+        sf.createUniformSamples();
+        
+        // Iterate through sample to ensure it was generated correctly
         Set<Tuple> sampledTuples = new HashSet<Tuple>();
-        
-        for(int i = 0; i < sf.getSamples().size(); i++) {
-            DbFile sample = sf.getSamples().get(i);
-            DbFileIterator iterator = sample.iterator(null);
-            iterator.open();
-            int counter = 0;
-            while(iterator.hasNext()) {
-                counter++;
-                Tuple tuple = iterator.next();
-                sampledTuples.add(tuple);
-            }
-            iterator.close();
-            int expected = sampleSizes.get(i) - (i == 0 ? 0 : sampleSizes.get(i - 1));
-            assertEquals(expected, counter); // Samples are the size we expect them to be
+        DbFileIterator iterator = sf.iterator(null);
+        iterator.open();
+        int counter = 0;
+        while(iterator.hasNext()) {
+            counter++;
+            Tuple tuple = iterator.next();
+            sampledTuples.add(tuple);
         }
+        iterator.close();
+        int expected = sampleSizes.get(sampleSizes.size() - 1);
+        assertEquals(expected, counter); // Samples are the size we expect them to be
+        
         
         assertEquals((int) sampleSizes.get(sampleSizes.size() - 1), sampledTuples.size()); // There are no repeated tuples
     }

@@ -24,20 +24,22 @@ public class SampleDBFile extends HeapFile{
     private final TupleDesc td;
     private final QueryColumnSet stratifiedColumns;
     private final List<Integer> sampleSizes;
-
-    public SampleDBFile(File f, List<Integer> sampleSizes, QueryColumnSet stratifiedColumns, DbFile origFile) {
+    private final DbFile origFile;
+    
+    public SampleDBFile(File f, List<Integer> sampleSizes, QueryColumnSet stratifiedColumns, DbFile origFile) throws DbException, IOException, TransactionAbortedException {
         super(f, origFile.getTupleDesc());
         //this.f = f;
         this.stratifiedColumns = stratifiedColumns;
         this.sampleSizes = sampleSizes;
 
         this.td = origFile.getTupleDesc();
+        this.origFile = origFile;
 
-        if (this.stratifiedColumns == null) createUniformSamples(origFile);
-        else createStratifiedSamples(origFile, Integer.MAX_VALUE); // TODO: figure out the cap stuff @Yun
+//        if (this.stratifiedColumns == null) createUniformSamples();
+//        else createStratifiedSamples(Integer.MAX_VALUE); // TODO: figure out the cap stuff @Yun
     }
 
-    private void createUniformSamples(DbFile origFile) throws NoSuchElementException, DbException, TransactionAbortedException, IOException {
+    public void createUniformSamples() throws NoSuchElementException, DbException, TransactionAbortedException, IOException {
         // Sample maxSize integers from origFile using reservoir sampling (O(n))
         int maxSize = sampleSizes.get(sampleSizes.size() - 1); // k is the size of the *largest* sample
         List<Tuple> reservoir = Arrays.asList(new Tuple[maxSize]);
@@ -70,7 +72,7 @@ public class SampleDBFile extends HeapFile{
              
     }
 
-    private void createStratifiedSamples(DbFile origFile, int cap) throws DbException, IOException, TransactionAbortedException {
+    public void createStratifiedSamples(int cap) throws DbException, IOException, TransactionAbortedException {
 
     	// get indices of the stratified columns 	
     	List<Integer> colIndices = Arrays.asList(new Integer[this.stratifiedColumns.getNumCols()]);
@@ -147,7 +149,6 @@ public class SampleDBFile extends HeapFile{
 
     // this iterator is called for actually generating tuples
     // you must know that it is an existing 
-    @Override
     public DbFileIterator iterator(TransactionId tid, int cutoff) {
         return new SampleIterator(this.getId(), tid, this.numPages(), cutoff);
     }

@@ -77,7 +77,7 @@ public class SampleSelector {
             return operator;
         }
         else { // Replace SeqScan 
-            return new SeqScanSample(sampleFamily, n);
+            return new SeqScanSample(null, sampleFamily, n);
         }
     }
     
