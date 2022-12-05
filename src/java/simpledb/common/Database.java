@@ -2,12 +2,9 @@ package simpledb.common;
 
 import simpledb.storage.BufferPool;
 import simpledb.storage.LogFile;
-import simpledb.storage.SampleFamily;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -24,7 +21,6 @@ public class Database {
     private static final AtomicReference<Database> _instance = new AtomicReference<>(new Database());
     private final Catalog _catalog;
     private final BufferPool _bufferpool;
-    private List<SampleFamily> _samplefamilies;
 
     private final static String LOGFILENAME = "log";
     private final LogFile _logfile;
@@ -32,7 +28,6 @@ public class Database {
     private Database() {
         _catalog = new Catalog();
         _bufferpool = new BufferPool(BufferPool.DEFAULT_PAGES);
-        _samplefamilies = new ArrayList<>();
         LogFile tmp = null;
         try {
             tmp = new LogFile(new File(LOGFILENAME));
@@ -65,13 +60,6 @@ public class Database {
         return _instance.get()._catalog;
     }
     
-    /**
-     * Return the sample families of the static Database instance
-     */
-    public static List<SampleFamily> getSampleFamilies() {
-        return _instance.get()._samplefamilies;
-    }
-
     /**
      * Method used for testing -- create a new instance of the buffer pool and
      * return it
