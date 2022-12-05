@@ -33,11 +33,13 @@ public class Catalog {
         public final String name;
         public final DbFile file;
         public final String pkeyField;
+        public final boolean isSample;
 
-        public Table(DbFile file, String name, String pkeyField) {
+        public Table(DbFile file, String name, String pkeyField, boolean isSample) {
             this.name = name;
             this.file = file;
             this.pkeyField = pkeyField;
+            this.isSample = isSample;
         }
     }
     
@@ -69,11 +71,16 @@ public class Catalog {
      * @param name      the name of the table -- may be an empty string.  May not be null.  If a name
      *                  conflict exists, use the last table to be added as the table for a given name.
      * @param pkeyField the name of the primary key field
+     * @param isSample  whether this table represents a sample
      */
-    public void addTable(DbFile file, String name, String pkeyField) {
-        Table table = new Table(file, name, pkeyField);
+    public void addTable(DbFile file, String name, String pkeyField, boolean isSample) {
+        Table table = new Table(file, name, pkeyField, isSample);
         idsToTables.put(file.getId(), table);
         stringsToTables.put(name, table);
+    }
+
+    public void addTable(DbFile file, String name, String pkeyField) {
+        addTable(file, name, pkeyField, false);
     }
 
     public void addTable(DbFile file, String name) {
@@ -127,6 +134,10 @@ public class Catalog {
 
     public String getPrimaryKey(int tableid) {
         return this.idsToTables.get(tableid).pkeyField;
+    }
+    
+    public boolean isSample(int tableid) {
+        return this.idsToTables.get(tableid).isSample;
     }
 
     public Iterator<Integer> tableIdIterator() {
