@@ -88,12 +88,12 @@ public class SampleSelector {
      * @param n Size of sample
      * @return latency in ms 
      */
-    private static int timeQueryOnSample(int sampleFamily, OpIterator query, int n) {
+    public static int timeQueryOnSample(int sampleFamily, OpIterator query, int n) {
         OpIterator newQuery = modifyOperatorSampleFamily(sampleFamily, query, n);
-        long startTime = System.nanoTime();
+        long startTime = System.currentTimeMillis();
         runOperator(newQuery);
-        long endTime = System.nanoTime();
-        long duration = (endTime - startTime) / 1000000;  // duration in ms
+        long endTime = System.currentTimeMillis();
+        long duration = endTime - startTime;  // duration in ms
         
         return (int) duration;
     }

@@ -56,7 +56,7 @@ public class SampleSelectionTest {
         Database.getCatalog().addTable(hf);
         
         // Create sample file
-        List<Integer> sampleSizes = Arrays.asList(10, 100, 1000);
+        List<Integer> sampleSizes = Arrays.asList(10, 1000, 5000);
         File f = File.createTempFile("sample-table", "dat");
         f.deleteOnExit();
         sf = new SampleDBFile(f, sampleSizes, null, this.hf);
@@ -133,6 +133,17 @@ public class SampleSelectionTest {
         SeqScanSample seqscanOperator = (SeqScanSample) children[0];
         assertEquals(seqscanOperator.getNTups(), N_TUPS);
         assertEquals(seqscanOperator.getSampleFileTableId(), sf.getId());
+    }
+    
+    /**
+     * Test timeQueryOnSample and runOperator 
+     */
+    @Test
+    public void testTimeQueryOnSample() throws Exception {
+        final int N_TUPS = 1000;
+        OpIterator operator = new SeqScan(null, hf.getId(), "");
+        OpIterator newOperator = SampleSelector.modifyOperatorSampleFamily(sf.getId(), operator, N_TUPS);
+        int ms = SampleSelector.timeQueryOnSample(sf.getId(), operator, N_TUPS);
     }
     
 }
