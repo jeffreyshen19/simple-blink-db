@@ -9,6 +9,7 @@ import simpledb.execution.Operator;
 import simpledb.execution.Query;
 import simpledb.storage.DbFile;
 import simpledb.storage.DbFileIterator;
+import simpledb.storage.SampleDBFile;
 import simpledb.storage.SampleFamily;
 import simpledb.transaction.TransactionAbortedException;
 
@@ -20,16 +21,18 @@ public class SampleSelector {
      * @param qcs
      * @return SampleFamily
      */
-    public SampleFamily selectSample(QueryColumnSet qcs) {
+    public SampleDBFile selectSample(QueryColumnSet qcs) {
         // still working on it rn - Victor
-        List<SampleFamily> sampleFamilies = Database.getSampleFamilies();
+        List<SampleDBFile> samples = Database.getSampleFamilies(); //replace with whatever function returns all samples
 
-        for (SampleFamily sf : sampleFamilies) {
-            if (sf.getColumnSet().getColumns().contains(qcs.getColumns())) {
+        SampleDBFile bestSample;
+
+        for (SampleDBFile sf : samples) {
+            if (sf.getStratifiedColumnSet().getColumns().contains(qcs.getColumns())) {
                 return sf;
             }
-            DbFile firstSample = sf.getSamples().get(0);
-            DbFileIterator sampleIterator = firstSample.iterator(null);
+            int firstCutoff = sf.getSampleSizes().get(0);
+            DbFileIterator sampleIterator = sf.iterator(null, firstCutoff);
             
         }
 

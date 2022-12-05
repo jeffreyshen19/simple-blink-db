@@ -15,14 +15,15 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-public class SampleDBFile implements DbFile{
-    private final File f;
+public class SampleDBFile extends HeapFile{
+    //private final File f;
     private final TupleDesc td;
     private final QueryColumnSet stratifiedColumns;
     private final List<Integer> sampleSizes;
 
     public SampleDBFile(File f, List<Integer> sampleSizes, QueryColumnSet stratifiedColumns, DbFile origFile) {
-        this.f = f;
+        super(f, origFile.getTupleDesc());
+        //this.f = f;
         this.stratifiedColumns = stratifiedColumns;
         this.sampleSizes = sampleSizes;
 
@@ -151,19 +152,6 @@ public class SampleDBFile implements DbFile{
         iterator.close();         
     }
 
-
-    public File getFile() {
-        return this.f;
-    }
-
-    public int getId() {
-        return f.getAbsoluteFile().hashCode();
-    }
-
-    public TupleDesc getTupleDesc() {
-        return this.td;
-    }
-
     public QueryColumnSet getStratifiedColumnSet() {
         return this.stratifiedColumns;
     }
@@ -172,102 +160,19 @@ public class SampleDBFile implements DbFile{
         return this.sampleSizes;
     }
 
-    public int numPages() {
-        return (int) (f.length() / BufferPool.getPageSize());
-    }
-
     public boolean isStratified() {
         return this.stratifiedColumns == null;
     }
 
-    // see DbFile.java for javadocs
-    public Page readPage(PageId pid) {
-        RandomAccessFile raf;
-        try {
-            raf = new RandomAccessFile(this.f, "rw");
-        } catch (FileNotFoundException e2) {
-            throw new IllegalArgumentException("");
-        }
-        
-        byte[] data = new byte[BufferPool.getPageSize()];
-        int offset = pid.getPageNumber() * BufferPool.getPageSize();
-        try {
-            raf.seek(offset);
-            raf.read(data, 0, data.length);
-            raf.close();
-        } catch (IOException e1) {
-            throw new IllegalArgumentException("Page does not exist in file");
-        }
-    
-        try {
-            return new HeapPage((HeapPageId) pid, data);
-        } catch (IOException e) {
-            throw new IllegalArgumentException("Page does not exist in file");
-        }
-    }
-
-    // see DbFile.java for javadocs
-    public void writePage(Page page) throws IOException {
-        int pgNo = page.getId().getPageNumber();
-
-        RandomAccessFile raf;
-        try {
-            raf = new RandomAccessFile(this.f, "rw");
-        } catch (FileNotFoundException e2) {
-            throw new IllegalArgumentException("");
-        }
-        
-        raf.seek(pgNo * BufferPool.getPageSize());
-        raf.write(page.getPageData());
-        raf.close();
-    }
-
-    // see DbFile.java for javadocs
-    public List<Page> insertTuple(TransactionId tid, Tuple t)
-            throws DbException, IOException, TransactionAbortedException {
-        
-        int n = numPages();
-        HeapPage page;
-        
-        for(int i = 0; i < n; i++) { // Go through all pages, find one with an empty slot 
-            page = (HeapPage) Database.getBufferPool().getPage(tid, new HeapPageId(this.getId(), i), Permissions.READ_WRITE);
-            if (page.getNumUnusedSlots() > 0) {
-                page.insertTuple(t);
-                return Arrays.asList(page);
-            }
-        }
-        
-        // Create a new page
-        page = new HeapPage(new HeapPageId(this.getId(), n), HeapPage.createEmptyPageData());
-        page.insertTuple(t);
-        writePage(page);
-        
-        return Arrays.asList(page);
-    }
-
-    // see DbFile.java for javadocs
-    public List<Page> deleteTuple(TransactionId tid, Tuple t) throws DbException,
-            TransactionAbortedException {
-        HeapPage page;
-        try {
-            page = (HeapPage) Database.getBufferPool().getPage(tid, t.getRecordId().getPageId(), Permissions.READ_WRITE);
-        }
-        catch (IllegalArgumentException e) {
-            throw new DbException("Tuple does not belong to this file");
-        }
-        
-        page.deleteTuple(t);
-        
-        return Arrays.asList(page);
-    }
-
     // this iterator should not get called- is only here to not throw errors
+    @Override
     public DbFileIterator iterator(TransactionId tid) {
         return new SampleIterator(this.getId(), tid, this.numPages(), this.sampleSizes.get(sampleSizes.size() - 1));
     }
 
     // this iterator is called for actually generating tuples
     // you must know that it is an existing 
+    @Override
     public DbFileIterator iterator(TransactionId tid, int cutoff) {
         return new SampleIterator(this.getId(), tid, this.numPages(), cutoff);
     }
