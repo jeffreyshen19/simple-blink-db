@@ -41,6 +41,14 @@ public class SeqScanSample implements OpIterator {
         this.sampleFile = Database.getCatalog().getSampleDBFile(this.sampleFileTableId);
         this.iterator = this.sampleFile.iterator(tid, nTups);
     }
+    
+    public int getNTups() {
+        return this.nTups;
+    }
+    
+    public int getSampleFileTableId() {
+        return this.sampleFileTableId;
+    }
 
     @Override
     public void open() throws DbException, TransactionAbortedException {

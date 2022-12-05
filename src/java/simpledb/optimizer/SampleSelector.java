@@ -23,7 +23,7 @@ public class SampleSelector {
      * @param qcs
      * @return the tableid of a sample in the catalog
      */
-    public int selectSample(QueryColumnSet qcs) {
+    public static int selectSample(QueryColumnSet qcs) {
         // still working on it rn - Victor
         Catalog catalog = Database.getCatalog();
 
@@ -46,7 +46,7 @@ public class SampleSelector {
      * Runs an operator until completion
      * @param query
      */
-    private void runOperator(OpIterator query) {
+    private static void runOperator(OpIterator query) {
         try {
             query.open();
             while(query.hasNext()) {
@@ -65,7 +65,7 @@ public class SampleSelector {
      * @param n
      * @return
      */
-    private OpIterator modifyOperatorSampleFamily(int sampleFamily, OpIterator query, int n) {
+    public static OpIterator modifyOperatorSampleFamily(int sampleFamily, OpIterator query, int n) {
         if(query instanceof Operator) { // JOIN, FILTER, AGGREGATE
             Operator operator = (Operator) query;
             OpIterator[] children = operator.getChildren();
@@ -88,7 +88,7 @@ public class SampleSelector {
      * @param n Size of sample
      * @return latency in ms 
      */
-    private int timeQueryOnSample(int sampleFamily, OpIterator query, int n) {
+    private static int timeQueryOnSample(int sampleFamily, OpIterator query, int n) {
         OpIterator newQuery = modifyOperatorSampleFamily(sampleFamily, query, n);
         long startTime = System.nanoTime();
         runOperator(newQuery);
@@ -106,7 +106,7 @@ public class SampleSelector {
      * @param errorTarget the target standard deviation 
      * @return n, the number of rows to read from the sample
      */
-    public int selectSampleSizeError(int sampleFamily, OpIterator query, double errorTarget) {
+    public static int selectSampleSizeError(int sampleFamily, OpIterator query, double errorTarget) {
         return 0;
         //TODO: yun, when writing this, you can assume that the functions to run a query actually work
     }
@@ -118,7 +118,7 @@ public class SampleSelector {
      * @param latencyTarget
      * @return n, the number of rows to read from the sample
      */
-    public int selectSampleSizeLatency(int sampleFamily, OpIterator query, double latencyTarget) {
+    public static int selectSampleSizeLatency(int sampleFamily, OpIterator query, double latencyTarget) {
         // Run two queries on small samples (size n_1 and n_2), and calculate respective latencies (y_1, y_2) 
         // Solve linear equation to relate sample size n to latency y 
         final int n1 = 100; // TODO: test if we need to adjust these values 

@@ -43,6 +43,10 @@ public class SampleTest {
         td = Utility.getTupleDesc(2);
     }
     
+    /**
+     * Test generating a uniform sample 
+     * @throws Exception
+     */
     @Test
     public void testUniformSample() throws Exception {
         // Create sample table and add it to catalog
