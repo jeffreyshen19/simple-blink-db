@@ -20,5 +20,12 @@ import simpledb.transaction.TransactionId;
  */
 public class SeqScanSample implements OpIterator {
     
-    
+    /**
+     * Creates a sequential scan over the specified sample family of size n
+     * @param sampleFamily the tableid of the sample family
+     * @param n
+     */
+    public SeqScanSample(int sampleFamily, int n) {
+    }
+
 }

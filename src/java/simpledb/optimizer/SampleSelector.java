@@ -9,9 +9,11 @@ import simpledb.common.DbException;
 import simpledb.execution.OpIterator;
 import simpledb.execution.Operator;
 import simpledb.execution.Query;
+import simpledb.execution.SeqScanSample;
 import simpledb.storage.DbFile;
 import simpledb.storage.DbFileIterator;
 import simpledb.transaction.TransactionAbortedException;
+import simpledb.transaction.TransactionId;
 
 public class SampleSelector {
     
@@ -57,16 +59,39 @@ public class SampleSelector {
     }
     
     /**
+     * Modifies an OpIterator to point to SeqScanSample instead of SeqScan
+     * @param sampleFamily
+     * @param query
+     * @param n
+     * @return
+     */
+    private OpIterator modifyOperatorSampleFamily(int sampleFamily, OpIterator query, int n) {
+        if(query instanceof Operator) { // JOIN, FILTER, AGGREGATE
+            Operator operator = (Operator) query;
+            OpIterator[] children = operator.getChildren();
+            OpIterator[] newChildren = new OpIterator[children.length];
+            for(int i = 0; i < children.length; i++) {
+                newChildren[i] = modifyOperatorSampleFamily(sampleFamily, children[i], n);
+            }
+            operator.setChildren(newChildren);
+            return operator;
+        }
+        else { // Replace SeqScan 
+            return new SeqScanSample(sampleFamily, n);
+        }
+    }
+    
+    /**
      * Return the latency of running a query on a sample of size n
      * @param sampleFamily the tableid of the sample family
-     * @param query Query to execute
+     * @param query Query to execute, pointing to the original table not the sample 
      * @param n Size of sample
      * @return latency in ms 
      */
     private int timeQueryOnSample(int sampleFamily, OpIterator query, int n) {
-        // TODO: modify query so that SeqScan references sampleFamily of size n
+        OpIterator newQuery = modifyOperatorSampleFamily(sampleFamily, query, n);
         long startTime = System.nanoTime();
-        runOperator(query);
+        runOperator(newQuery);
         long endTime = System.nanoTime();
         long duration = (endTime - startTime) / 1000000;  // duration in ms
         
