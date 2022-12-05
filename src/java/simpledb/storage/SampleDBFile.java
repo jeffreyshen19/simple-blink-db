@@ -11,9 +11,11 @@ import simpledb.transaction.TransactionId;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class SampleDBFile implements DbFile{
     private final File f;
@@ -33,8 +35,6 @@ public class SampleDBFile implements DbFile{
     }
 
     private void createUniformSamples(DbFile origFile) throws NoSuchElementException, DbException, TransactionAbortedException, IOException {
-        // TODO: adapt to new data structure
-
         // Sample k integers from origFile using reservoir sampling (O(n))
         int k = sampleSizes.get(sampleSizes.size() - 1); // k is the size of the *largest* sample
         List<Tuple> reservoir = Arrays.asList(new Tuple[k]);
@@ -55,28 +55,16 @@ public class SampleDBFile implements DbFile{
             i++;
         }
         
-        // Divide the k tuples into the correct sample files 
-        Collections.shuffle(reservoir);
-        int sampleI = 0; 
-        int dbId = samples.get(sampleI).getId();
-        int sampleSize = sampleSizes.get(sampleI);
+        iterator.close();      
         
+        // Write the tuples to disk
+        Collections.shuffle(reservoir);
         
         for(i = 0; i < k; i++) {
-            // If sampleSizes are [a, b, c, ...],
-            // add tuples with i < a to samples[0], tuples with i < b to samples[1], etc
-            if(i == sampleSize) {
-                sampleI++;
-                dbId = samples.get(sampleI).getId();
-                sampleSize = sampleSizes.get(sampleI);
-            }
-            
             Tuple tuple = reservoir.get(i);
-            Database.getBufferPool().insertTuple(null, dbId, tuple);
-            
+            insertTuple(null, tuple);
         }
              
-        iterator.close();         
     }
 
     private void createStratifiedSamples(DbFile origFile, int cap) {
