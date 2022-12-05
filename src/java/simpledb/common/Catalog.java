@@ -2,6 +2,7 @@ package simpledb.common;
 
 import simpledb.storage.DbFile;
 import simpledb.storage.HeapFile;
+import simpledb.storage.SampleDBFile;
 import simpledb.storage.Tuple;
 import simpledb.storage.TupleDesc;
 import simpledb.storage.TupleDesc.TDItem;
@@ -138,6 +139,11 @@ public class Catalog {
     
     public boolean isSample(int tableid) {
         return this.idsToTables.get(tableid).isSample;
+    }
+
+    public SampleDBFile getSampleDBFile(int tableid) throws NoSuchElementException {
+        assert this.isSample(tableid); 
+        return (SampleDBFile) this.idsToTables.get(tableid).file;
     }
 
     public Iterator<Integer> tableIdIterator() {
