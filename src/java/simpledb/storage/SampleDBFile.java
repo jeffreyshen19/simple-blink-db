@@ -15,6 +15,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class SampleDBFile extends HeapFile{
@@ -32,13 +34,13 @@ public class SampleDBFile extends HeapFile{
         this.td = origFile.getTupleDesc();
 
         if (this.stratifiedColumns == null) createUniformSamples(origFile);
-        else createStratifiedSamples(origFile); // TODO: figure out the cap stuff @Yun
+        else createStratifiedSamples(origFile, Integer.MAX_VALUE); // TODO: figure out the cap stuff @Yun
     }
 
     private void createUniformSamples(DbFile origFile) throws NoSuchElementException, DbException, TransactionAbortedException, IOException {
-        // Sample k integers from origFile using reservoir sampling (O(n))
-        int k = sampleSizes.get(sampleSizes.size() - 1); // k is the size of the *largest* sample
-        List<Tuple> reservoir = Arrays.asList(new Tuple[k]);
+        // Sample maxSize integers from origFile using reservoir sampling (O(n))
+        int maxSize = sampleSizes.get(sampleSizes.size() - 1); // k is the size of the *largest* sample
+        List<Tuple> reservoir = Arrays.asList(new Tuple[maxSize]);
         
         DbFileIterator iterator = origFile.iterator(null);
         iterator.open();
@@ -47,10 +49,10 @@ public class SampleDBFile extends HeapFile{
         while(iterator.hasNext()) {
             Tuple tuple = iterator.next();
             
-            if(i < k) reservoir.set(i, tuple);
+            if(i < maxSize) reservoir.set(i, tuple);
             else {
                 int j = ThreadLocalRandom.current().nextInt(0, i + 1); // random integer in range [0, i]
-                if(j < k) reservoir.set(j, tuple);
+                if(j < maxSize) reservoir.set(j, tuple);
             }      
             
             i++;
@@ -61,17 +63,16 @@ public class SampleDBFile extends HeapFile{
         // Write the tuples to disk
         Collections.shuffle(reservoir);
         
-        for(i = 0; i < k; i++) {
+        for(i = 0; i < maxSize; i++) {
             Tuple tuple = reservoir.get(i);
             insertTuple(null, tuple);
         }
              
     }
 
-    private void createStratifiedSamples(DbFile origFile, int cap) {
-    	// TODO: adapt to new data structure
-    	// get indices of the stratified columns
-    	
+    private void createStratifiedSamples(DbFile origFile, int cap) throws DbException, IOException, TransactionAbortedException {
+
+    	// get indices of the stratified columns 	
     	List<Integer> colIndices = Arrays.asList(new Integer[this.stratifiedColumns.getNumCols()]);
     	Set<String> colNames = this.stratifiedColumns.getColumns();
     	for (int i = 0; i < this.td.numFields(); i++) {
@@ -79,10 +80,9 @@ public class SampleDBFile extends HeapFile{
     			colIndices.add(i);
     		}
     	}
-    	
-    	// get all columns from query column set, iterate through it, get the i using td
-    	
-    	int maxSize = sampleSizes.get(sampleSizes.size() - 1); // k is the size of the *largest* sample
+
+        // Sample maxSize integers from origFile using reservoir sampling (O(n))
+    	int maxSize = sampleSizes.get(sampleSizes.size() - 1); // maxSize is the size of the *largest* sample
         List<Tuple> reservoir = Arrays.asList(new Tuple[maxSize]);
         ConcurrentHashMap<String, Integer> columnValCount = new ConcurrentHashMap<>();
     	
@@ -115,29 +115,16 @@ public class SampleDBFile extends HeapFile{
             
             i++;
         }
+             
+        iterator.close();      
         
-        // Divide the k tuples into the correct sample files 
+        // Write the tuples to disk
         Collections.shuffle(reservoir);
-        int sampleI = 0; 
-        int dbId = samples.get(sampleI).getId();
-        int sampleSize = sampleSizes.get(sampleI);
-        
         
         for(i = 0; i < maxSize; i++) {
-            // If sampleSizes are [a, b, c, ...],
-            // add tuples with i < a to samples[0], tuples with i < b to samples[1], etc
-            if(i == sampleSize) {
-                sampleI++;
-                dbId = samples.get(sampleI).getId();
-                sampleSize = sampleSizes.get(sampleI);
-            }
-            
             Tuple tuple = reservoir.get(i);
-            Database.getBufferPool().insertTuple(null, dbId, tuple);
-            
+            insertTuple(null, tuple);
         }
-             
-        iterator.close();         
     }
 
     public QueryColumnSet getStratifiedColumnSet() {
