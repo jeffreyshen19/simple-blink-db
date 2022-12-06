@@ -67,9 +67,8 @@ public class SampleDBFile extends HeapFile{
         
         for(i = 0; i < maxSize; i++) {
             Tuple tuple = reservoir.get(i);
-            insertTuple(null, tuple);
+            Database.getBufferPool().insertTuple(null, this.getId(), tuple);
         }
-             
     }
 
     public void createStratifiedSamples(int cap) throws DbException, IOException, TransactionAbortedException {

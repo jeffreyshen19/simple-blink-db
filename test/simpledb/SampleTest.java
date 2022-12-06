@@ -9,11 +9,13 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import simpledb.common.Type;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import simpledb.common.Type;
 import simpledb.common.Database;
 import simpledb.common.Utility;
 import simpledb.optimizer.QueryColumnSet;
@@ -39,8 +41,13 @@ public class SampleTest {
      */
     @Before
     public void setUp() throws Exception {
-        hf = SystemTestUtil.createRandomHeapFile(2, 10000, null, null);
-        td = Utility.getTupleDesc(2);
+//        hf = SystemTestUtil.createRandomHeapFile(2, 10000, null, null);
+        Type types[] = new Type[]{Type.INT_TYPE, Type.INT_TYPE};
+        String names[] = new String[]{"id", "quantity"};
+        this.td = new TupleDesc(types, names);
+        
+        hf = new HeapFile(new File("test_uniform_dataset_5000000.dat"), td);
+        Database.getCatalog().addTable(hf, "t1");
     }
     
     /**
@@ -50,7 +57,7 @@ public class SampleTest {
     @Test
     public void testUniformSample() throws Exception {
         // Create sample table and add it to catalog
-        List<Integer> sampleSizes = Arrays.asList(10, 100, 1000);
+        List<Integer> sampleSizes = Arrays.asList(10000, 50000, 100000);
         File f = File.createTempFile("sample-table", "dat");
         f.deleteOnExit();
         SampleDBFile sf = new SampleDBFile(f, sampleSizes, null, this.hf);
@@ -58,6 +65,7 @@ public class SampleTest {
         
         // Populate sample table
         sf.createUniformSamples();
+        Database.getBufferPool().flushAllPages();
         
         // Iterate through sample to ensure it was generated correctly
         Set<Tuple> sampledTuples = new HashSet<Tuple>();
