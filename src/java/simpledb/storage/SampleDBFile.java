@@ -24,22 +24,23 @@ public class SampleDBFile extends HeapFile{
     private final TupleDesc td;
     private final QueryColumnSet stratifiedColumns;
     private final List<Integer> sampleSizes;
-    private final DbFile origFile;
     
-    public SampleDBFile(File f, List<Integer> sampleSizes, QueryColumnSet stratifiedColumns, DbFile origFile) throws DbException, IOException, TransactionAbortedException {
-        super(f, origFile.getTupleDesc());
-        //this.f = f;
+    public SampleDBFile(File f, List<Integer> sampleSizes, QueryColumnSet stratifiedColumns, TupleDesc td) throws DbException, IOException, TransactionAbortedException {
+        super(f, td);
         this.stratifiedColumns = stratifiedColumns;
         this.sampleSizes = sampleSizes;
-
-        this.td = origFile.getTupleDesc();
-        this.origFile = origFile;
-
-//        if (this.stratifiedColumns == null) createUniformSamples();
-//        else createStratifiedSamples(Integer.MAX_VALUE); // TODO: figure out the cap stuff @Yun
+        this.td = td;
     }
-
-    public void createUniformSamples() throws NoSuchElementException, DbException, TransactionAbortedException, IOException {
+    
+    /**
+     * Populate the SampleDbFile based off origFile
+     * @param origFile
+     * @throws NoSuchElementException
+     * @throws DbException
+     * @throws TransactionAbortedException
+     * @throws IOException
+     */
+    public void createUniformSamples(DbFile origFile) throws NoSuchElementException, DbException, TransactionAbortedException, IOException {
         // Sample maxSize integers from origFile using reservoir sampling (O(n))
         int maxSize = sampleSizes.get(sampleSizes.size() - 1); // k is the size of the *largest* sample
         List<Tuple> reservoir = Arrays.asList(new Tuple[maxSize]);
@@ -71,7 +72,7 @@ public class SampleDBFile extends HeapFile{
         }
     }
 
-    public void createStratifiedSamples(int cap) throws DbException, IOException, TransactionAbortedException {
+    public void createStratifiedSamples(DbFile origFile, int cap) throws DbException, IOException, TransactionAbortedException {
 
     	// get indices of the stratified columns 	
     	List<Integer> colIndices = Arrays.asList(new Integer[this.stratifiedColumns.getNumCols()]);

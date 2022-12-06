@@ -18,7 +18,9 @@ import org.junit.Test;
 import simpledb.common.Type;
 import simpledb.common.Database;
 import simpledb.common.Utility;
+import simpledb.execution.OpIterator;
 import simpledb.optimizer.QueryColumnSet;
+import simpledb.optimizer.SampleSelector;
 import simpledb.storage.BufferPool;
 import simpledb.storage.DbFile;
 import simpledb.storage.DbFileIterator;
@@ -60,11 +62,11 @@ public class SampleTest {
         List<Integer> sampleSizes = Arrays.asList(10000, 50000, 100000);
         File f = File.createTempFile("sample-table", "dat");
         f.deleteOnExit();
-        SampleDBFile sf = new SampleDBFile(f, sampleSizes, null, this.hf);
+        SampleDBFile sf = new SampleDBFile(f, sampleSizes, null, this.td);
         Database.getCatalog().addTable(sf, "sample-table", "", true);
         
         // Populate sample table
-        sf.createUniformSamples();
+        sf.createUniformSamples(this.hf);
         Database.getBufferPool().flushAllPages();
         
         // Iterate through sample to ensure it was generated correctly
