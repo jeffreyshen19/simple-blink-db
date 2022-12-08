@@ -9,19 +9,24 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import simpledb.common.Type;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import simpledb.common.Type;
 import simpledb.common.Database;
 import simpledb.common.Utility;
+import simpledb.execution.OpIterator;
+import simpledb.optimizer.QueryColumnSet;
+import simpledb.optimizer.SampleSelector;
 import simpledb.storage.BufferPool;
 import simpledb.storage.DbFile;
 import simpledb.storage.DbFileIterator;
 import simpledb.storage.HeapFile;
 import simpledb.storage.HeapFileEncoder;
-import simpledb.storage.SampleFamily;
+import simpledb.storage.SampleDBFile;
 import simpledb.storage.Tuple;
 import simpledb.storage.TupleDesc;
 import simpledb.systemtest.SystemTestUtil;
@@ -38,37 +43,45 @@ public class SampleTest {
      */
     @Before
     public void setUp() throws Exception {
-        hf = SystemTestUtil.createRandomHeapFile(2, 10000, null, null);
-        td = Utility.getTupleDesc(2);
+//        hf = SystemTestUtil.createRandomHeapFile(2, 10000, null, null);
+        Type types[] = new Type[]{Type.INT_TYPE, Type.INT_TYPE};
+        String names[] = new String[]{"id", "quantity"};
+        this.td = new TupleDesc(types, names);
+        
+        hf = new HeapFile(new File("test_uniform_dataset_5000000.dat"), td);
+        Database.getCatalog().addTable(hf, "t1");
     }
     
+    /**
+     * Test generating a uniform sample 
+     * @throws Exception
+     */
     @Test
     public void testUniformSample() throws Exception {
-        List<Integer> sampleSizes = Arrays.asList(10, 100, 1000);
-        List<File> files = new ArrayList<>();
-        for(int i = 0; i < sampleSizes.size(); i++) {
-            File f = File.createTempFile("sample-table-" + i, ".dat");
-            f.deleteOnExit();
-            files.add(f);
-        }
+        // Create sample table and add it to catalog
+        List<Integer> sampleSizes = Arrays.asList(10000, 50000, 100000);
+        File f = File.createTempFile("sample-table", "dat");
+        f.deleteOnExit();
+        SampleDBFile sf = new SampleDBFile(f, sampleSizes, null, this.td);
+        Database.getCatalog().addTable(sf, "sample-table", "", true);
         
-        SampleFamily sf = new SampleFamily(sampleSizes, files, null, this.hf);
+        // Populate sample table
+        sf.createUniformSamples(this.hf);
+
+        // Iterate through sample to ensure it was generated correctly
         Set<Tuple> sampledTuples = new HashSet<Tuple>();
-        
-        for(int i = 0; i < sf.getSamples().size(); i++) {
-            DbFile sample = sf.getSamples().get(i);
-            DbFileIterator iterator = sample.iterator(null);
-            iterator.open();
-            int counter = 0;
-            while(iterator.hasNext()) {
-                counter++;
-                Tuple tuple = iterator.next();
-                sampledTuples.add(tuple);
-            }
-            iterator.close();
-            int expected = sampleSizes.get(i) - (i == 0 ? 0 : sampleSizes.get(i - 1));
-            assertEquals(expected, counter); // Samples are the size we expect them to be
+        DbFileIterator iterator = sf.iterator(null);
+        iterator.open();
+        int counter = 0;
+        while(iterator.hasNext()) {
+            counter++;
+            Tuple tuple = iterator.next();
+            sampledTuples.add(tuple);
         }
+        iterator.close();
+        int expected = sampleSizes.get(sampleSizes.size() - 1);
+        assertEquals(expected, counter); // Samples are the size we expect them to be
+        
         
         assertEquals((int) sampleSizes.get(sampleSizes.size() - 1), sampledTuples.size()); // There are no repeated tuples
     }

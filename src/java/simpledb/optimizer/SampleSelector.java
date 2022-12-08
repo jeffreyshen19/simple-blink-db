@@ -2,6 +2,7 @@ package simpledb.optimizer;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -97,11 +98,13 @@ public class SampleSelector {
      * Runs an operator until completion
      * @param query
      */
-    private void runOperator(OpIterator query) {
+    private static void runOperator(OpIterator query) {
         try {
             query.open();
+            int i = 0;
             while(query.hasNext()) {
                 query.next();
+                i++;
             }
             query.close();
         } catch (DbException | TransactionAbortedException e) {
@@ -152,7 +155,7 @@ public class SampleSelector {
      * @param n
      * @return
      */
-    private OpIterator modifyOperatorSampleFamily(int sampleFamily, OpIterator query, int n) {
+    public static OpIterator modifyOperatorSampleFamily(int sampleFamily, OpIterator query, int n) {
         if(query instanceof Operator) { // JOIN, FILTER, AGGREGATE
             Operator operator = (Operator) query;
             OpIterator[] children = operator.getChildren();
@@ -164,7 +167,7 @@ public class SampleSelector {
             return operator;
         }
         else { // Replace SeqScan 
-            return new SeqScanSample(sampleFamily, n);
+            return new SeqScanSample(null, sampleFamily, n);
         }
     }
     
@@ -175,12 +178,12 @@ public class SampleSelector {
      * @param n Size of sample
      * @return latency in ms 
      */
-    private int timeQueryOnSample(int sampleFamily, OpIterator query, int n) {
+    public static int timeQueryOnSample(int sampleFamily, OpIterator query, int n) {
         OpIterator newQuery = modifyOperatorSampleFamily(sampleFamily, query, n);
-        long startTime = System.nanoTime();
+        long startTime = System.currentTimeMillis();
         runOperator(newQuery);
-        long endTime = System.nanoTime();
-        long duration = (endTime - startTime) / 1000000;  // duration in ms
+        long endTime = System.currentTimeMillis();
+        long duration = endTime - startTime;  // duration in ms
         
         return (int) duration;
     }
@@ -193,7 +196,7 @@ public class SampleSelector {
      * @param errorTarget the target standard deviation 
      * @return n, the number of rows to read from the sample
      */
-    public int selectSampleSizeError(int sampleFamily, OpIterator query, double errorTarget) {
+    public static int selectSampleSizeError(int sampleFamily, OpIterator query, double errorTarget) {
         return 0;
         //TODO: yun, when writing this, you can assume that the functions to run a query actually work
     }
@@ -201,18 +204,19 @@ public class SampleSelector {
     /**
      * Given a sampleFamily and latency target, return the estimated size of the sample satisfying this target
      * @param sampleFamily the tableid of the sample family
+     * @param sampleSizes the sampleSizes used to generate the sample
      * @param query Query to execute
-     * @param latencyTarget
+     * @param latencyTarget in ms
      * @return n, the number of rows to read from the sample
      */
-    public int selectSampleSizeLatency(int sampleFamily, OpIterator query, double latencyTarget) {
+    public static int selectSampleSizeLatency(int sampleFamily, List<Integer> sampleSizes, OpIterator query, int latencyTarget) {
         // Run two queries on small samples (size n_1 and n_2), and calculate respective latencies (y_1, y_2) 
         // Solve linear equation to relate sample size n to latency y 
-        final int n1 = 100; // TODO: test if we need to adjust these values 
-        final int n2 = 200; 
+        final int n1 = sampleSizes.get(0); 
+        final int n2 = sampleSizes.get(1); 
         final int y1 = timeQueryOnSample(sampleFamily, query, n1);
         final int y2 = timeQueryOnSample(sampleFamily, query, n2);
-        
+
         final double m = 1.0 * (y2 - y1) / (n2 - n1);
         final double b = y1 - m * n1;
         
