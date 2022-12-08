@@ -1,17 +1,25 @@
 package simpledb.optimizer;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import simpledb.common.Catalog;
 import simpledb.common.Database;
 import simpledb.common.DbException;
+import simpledb.execution.Aggregate;
 import simpledb.execution.OpIterator;
 import simpledb.execution.Operator;
 import simpledb.execution.Query;
 import simpledb.execution.SeqScanSample;
+import simpledb.execution.Aggregator.Op;
 import simpledb.storage.DbFile;
 import simpledb.storage.DbFileIterator;
+import simpledb.storage.SampleDBFile;
+import simpledb.storage.Tuple;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
@@ -23,23 +31,66 @@ public class SampleSelector {
      * @param qcs
      * @return the tableid of a sample in the catalog
      */
-    public int selectSample(QueryColumnSet qcs) {
+    public int selectSample(QueryColumnSet qcs, OpIterator query) throws DbException, TransactionAbortedException{
         // still working on it rn - Victor
         Catalog catalog = Database.getCatalog();
 
+        int minValidTableID = -1;
+        int minValidSampleSize = Integer.MAX_VALUE;
+        //check if QueryColumnSet fully contained in existing sample already
+        for (Iterator<Integer> iterator = catalog.tableIdIterator(); iterator.hasNext(); ) {
+            int tableid = iterator.next();
+            if(catalog.isSample(tableid)) {
+                SampleDBFile sample = (SampleDBFile) catalog.getDatabaseFile(tableid);
+                //if the sample is the uniform sample, then skip
+                if (!sample.isStratified()) continue;
+
+                QueryColumnSet sampleQCS = sample.getStratifiedColumnSet();
+                //get the smallest sample that fully contains it 
+                if (sampleQCS.getColumns().contains(qcs.getColumns()) &&
+                    sample.getSampleSizes().get(0) < minValidSampleSize) {
+                        minValidSampleSize = sample.getSampleSizes().get(0);
+                        minValidTableID = tableid;
+                }
+            }
+        }
+
+        if (minValidTableID != -1) {
+            return minValidTableID;
+        }
+
+        Map<Integer, Double> tableidToRatio = new ConcurrentHashMap<Integer, Double>();
+
+        // else- run query on each sample family and find one with largest selectivity
         for (Iterator<Integer> iterator = catalog.tableIdIterator(); iterator.hasNext(); ) {
             int tableid = iterator.next();
             if(catalog.isSample(tableid)) { // Filter for samples - Jeffrey 
-//                if (sf.getColumnSet().getColumns().contains(qcs.getColumns())) {
-//                    return sf;
-//                }
-//                DbFile firstSample = sf.getSamples().get(0);
-//                DbFileIterator sampleIterator = firstSample.iterator(null);
-            } 
+                SampleDBFile sample = (SampleDBFile) catalog.getDatabaseFile(tableid);
+                //get number of tuples in smallest sample in sampleFamily
+                int totalTuples = sample.getSampleSizes().get(0);
+                int matchTuples = 0;
+
+                OpIterator sampleQuery = modifyOperatorSampleFamily(tableid, query, totalTuples);
+                // modify remove agg
+                // modify make top agg
+                OpIterator countQuery = modifyOperatorCount(sampleQuery, false);
+
+                countQuery.open();
+                Tuple countTuple = countQuery.next();
+                
+                double ratio = matchTuples/((double) totalTuples);
+                tableidToRatio.put(tableid, ratio);
+            }
         }
 
+        double maxSelectivity = Collections.max(tableidToRatio.values());
+        for (int tableid : tableidToRatio.keySet()) {
+            if (tableidToRatio.get(tableid) == maxSelectivity) return tableid;
+        }
+
+
         
-        throw new UnsupportedOperationException();
+        throw new DbException("Should not have reached here");
     }
     
     /**
@@ -57,6 +108,42 @@ public class SampleSelector {
             e.printStackTrace();
         }     
     }
+
+    /**
+     * Modieifes an OpIterator to have its aggregation function be Count
+     */
+    private OpIterator modifyOperatorCount(OpIterator query, boolean aggEncountered) {
+        if (query instanceof Operator) {
+            Operator operator = (Operator) query;
+            OpIterator[] children = operator.getChildren();
+            OpIterator[] newChildren = new OpIterator[children.length];
+            int childIndex = 0;
+            for (OpIterator child : children) {
+                if (child instanceof Aggregate) {
+                    Aggregate currAgg = (Aggregate) query;
+                    //want count of only very top query
+                    if (aggEncountered) {
+                        Aggregate newAgg = new Aggregate(currAgg.getChildren()[0], currAgg.aggregateField(), currAgg.groupField(), Op.COUNT);
+                        modifyOperatorCount(newAgg, false);
+                        newChildren[childIndex] = newAgg;
+                    } else {
+                        OpIterator[] childchildren = ((Operator) child).getChildren();
+
+
+                    }
+                } else {
+                    modifyOperatorCount(child, aggEncountered);
+                    newChildren[childIndex] = child;
+                }
+                childIndex++;
+            }
+            operator.setChildren(newChildren);
+            return operator;
+        } else {
+            return query;
+        }
+    }
+    
     
     /**
      * Modifies an OpIterator to point to SeqScanSample instead of SeqScan
