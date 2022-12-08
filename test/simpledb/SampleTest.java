@@ -67,8 +67,7 @@ public class SampleTest {
         
         // Populate sample table
         sf.createUniformSamples(this.hf);
-        Database.getBufferPool().flushAllPages();
-        
+
         // Iterate through sample to ensure it was generated correctly
         Set<Tuple> sampledTuples = new HashSet<Tuple>();
         DbFileIterator iterator = sf.iterator(null);

@@ -54,21 +54,15 @@ public class SampleSelectionTest {
     public void setUp() throws Exception {
         Type types[] = new Type[]{Type.INT_TYPE, Type.INT_TYPE};
         String names[] = new String[]{"id", "quantity"};
-        td = new TupleDesc(types, names);
-        sampleSizes = Arrays.asList(10000, 50000, 100000);
-        sf = new SampleDBFile(new File("test_uniform_sample.dat"), sampleSizes, null, td);
+        hf = SystemTestUtil.createRandomHeapFile(2, 10000, null, null);
+        td = Utility.getTupleDesc(2);
+        File f = File.createTempFile("sample-table", "dat");
+        f.deleteOnExit();
+        sampleSizes = Arrays.asList(100, 500, 1000);
+        sf = new SampleDBFile(f, sampleSizes, null, td);
         Database.getCatalog().addTable(sf, "sample-table", "", true);
+        sf.createUniformSamples(this.hf);
     }
-    
-//    /**
-//     * Test Latency
-//     */
-//    @Test 
-//    public void testLatencySelection() throws Exception{
-//        OpIterator query = new SeqScan(null, sf.getId(), "");
-//        int n = SampleSelector.selectSampleSizeLatency(sf.getId(), sampleSizes, query, 500);
-//        System.out.println(n);
-//    }
     
     /**
      * Test that modifyOperatorSampleFamily replaces operator trees with a SeqScanOperator
@@ -78,7 +72,7 @@ public class SampleSelectionTest {
     @Test
     public void testModifyOperatorSampleFamilySeqScan() throws Exception {
         final int N_TUPS = 100;
-        OpIterator operator = new SeqScan(null, sf.getId(), "");
+        OpIterator operator = new SeqScan(null, hf.getId(), "");
         OpIterator newOperator = SampleSelector.modifyOperatorSampleFamily(sf.getId(), operator, N_TUPS);
         
         assertEquals(newOperator instanceof SeqScanSample, true);
@@ -91,7 +85,7 @@ public class SampleSelectionTest {
     @Test
     public void testModifyOperatorSampleFamilyFilter() throws Exception {
         final int N_TUPS = 100;
-        SeqScan scan = new SeqScan(null, sf.getId(), "");
+        SeqScan scan = new SeqScan(null, hf.getId(), "");
         Predicate pred = new Predicate(0, Predicate.Op.EQUALS, TestUtil.getField(0));
         OpIterator operator = new Filter(pred, scan);
         OpIterator newOperator = SampleSelector.modifyOperatorSampleFamily(sf.getId(), operator, N_TUPS);
@@ -114,7 +108,7 @@ public class SampleSelectionTest {
     @Test
     public void testModifyOperatorSampleFamilyAggregate() throws Exception {
         final int N_TUPS = 100;
-        SeqScan scan = new SeqScan(null, sf.getId(), "");
+        SeqScan scan = new SeqScan(null, hf.getId(), "");
         Predicate pred = new Predicate(0, Predicate.Op.EQUALS, TestUtil.getField(0));
         Filter filter = new Filter(pred, scan);
         OpIterator operator = new Aggregate(filter, 0, 0, Aggregator.Op.MIN);
@@ -146,8 +140,8 @@ public class SampleSelectionTest {
      */
     @Test
     public void testTimeQueryOnSample() throws Exception {
-        final int N_TUPS = 1000;
-        OpIterator operator = new SeqScan(null, sf.getId(), "");
+        final int N_TUPS = 500;
+        OpIterator operator = new SeqScan(null, hf.getId(), "");
         OpIterator newOperator = SampleSelector.modifyOperatorSampleFamily(sf.getId(), operator, N_TUPS);
         int ms = SampleSelector.timeQueryOnSample(sf.getId(), operator, N_TUPS);
     }

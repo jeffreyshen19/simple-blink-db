@@ -55,7 +55,6 @@ public class SampleSelector {
                 query.next();
                 i++;
             }
-            System.out.println("read " + i);
             query.close();
         } catch (DbException | TransactionAbortedException e) {
             e.printStackTrace();
@@ -130,7 +129,7 @@ public class SampleSelector {
         final int n2 = sampleSizes.get(1); 
         final int y1 = timeQueryOnSample(sampleFamily, query, n1);
         final int y2 = timeQueryOnSample(sampleFamily, query, n2);
-        
+
         final double m = 1.0 * (y2 - y1) / (n2 - n1);
         final double b = y1 - m * n1;
         
