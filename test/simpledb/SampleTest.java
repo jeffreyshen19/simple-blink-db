@@ -1,6 +1,7 @@
 package simpledb;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -15,10 +16,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import junit.framework.JUnit4TestAdapter;
 import simpledb.common.Type;
 import simpledb.common.Database;
 import simpledb.common.Utility;
 import simpledb.execution.OpIterator;
+import simpledb.execution.SeqScanSample;
 import simpledb.optimizer.QueryColumnSet;
 import simpledb.optimizer.SampleSelector;
 import simpledb.storage.BufferPool;
@@ -29,10 +32,11 @@ import simpledb.storage.HeapFileEncoder;
 import simpledb.storage.SampleDBFile;
 import simpledb.storage.Tuple;
 import simpledb.storage.TupleDesc;
+import simpledb.systemtest.SimpleDbTestBase;
 import simpledb.systemtest.SystemTestUtil;
 import simpledb.transaction.TransactionId;
 
-public class SampleTest {
+public class SampleTest extends SimpleDbTestBase{
     
     private HeapFile hf;
     private TransactionId tid;
@@ -50,6 +54,41 @@ public class SampleTest {
         
         hf = new HeapFile(new File("test_uniform_dataset_5000000.dat"), td);
         Database.getCatalog().addTable(hf, "t1");
+        
+    }
+
+    /**
+     * Test SeqScanSample after generating a uniform sample 
+     */
+    @Test
+    public void testSeqScanSample() throws Exception{
+        TransactionId tid = new TransactionId();
+        
+        // Create sample table and add it to catalog
+        List<Integer> sampleSizes = Arrays.asList(10000, 50000, 100000);
+        File f = File.createTempFile("sample-table", "dat");
+        f.deleteOnExit();
+        SampleDBFile sf = new SampleDBFile(f, sampleSizes, null, this.td);
+        Database.getCatalog().addTable(sf, "sample-table", "", true);
+        
+        // Populate sample table
+        sf.createUniformSamples(this.hf);
+
+        int tableId = Database.getCatalog().getTableId("sample-table");
+        SeqScanSample scan = new SeqScanSample(tid, tableId, 50);
+        scan.open();
+        for (int i = 0; i < 50; ++i) {
+            assertTrue(scan.hasNext());
+            scan.next();
+        }
+        scan.rewind();
+        for (int i = 0; i < 50; ++i) {
+            assertTrue(scan.hasNext());
+            scan.next();
+        }
+        assertFalse("There should be no more samples", !scan.hasNext());
+        scan.close();
+        Database.getBufferPool().transactionComplete(tid);
     }
     
     /**
