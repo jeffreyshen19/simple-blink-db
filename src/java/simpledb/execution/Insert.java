@@ -24,6 +24,8 @@ public class Insert extends Operator {
     private OpIterator child;
     private int tableId;
     private boolean inserted = false; // keep track of whether operator has been called
+    private int totalTuples;
+    private int numTuples;
 
     /**
      * Constructor.
@@ -40,6 +42,8 @@ public class Insert extends Operator {
         this.t = t;
         this.child = child;
         this.tableId = tableId;
+        this.totalTuples = child.totalTuples();
+        this.numTuples = child.numTuples();
     }
 
     public TupleDesc getTupleDesc() {
@@ -49,6 +53,8 @@ public class Insert extends Operator {
     public void open() throws DbException, TransactionAbortedException {
         super.open();
         child.open();
+        this.totalTuples = child.totalTuples();
+        this.numTuples = child.numTuples();
     }
 
     public void close() {
@@ -92,6 +98,8 @@ public class Insert extends Operator {
         
         Tuple result = new Tuple(getTupleDesc());
         result.setField(0, new IntField(numInserted));
+        this.totalTuples += numInserted;
+        this.numTuples += numInserted;
         return result;
     }
 
@@ -103,5 +111,13 @@ public class Insert extends Operator {
     @Override
     public void setChildren(OpIterator[] children) {
         this.child = children[0];
+    }
+    @Override
+    public int totalTuples() {
+        return this.totalTuples;
+    }
+    @Override
+    public int numTuples() {
+        return this.numTuples;
     }
 }

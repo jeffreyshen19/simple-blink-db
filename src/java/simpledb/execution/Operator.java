@@ -15,6 +15,8 @@ import java.util.NoSuchElementException;
 public abstract class Operator implements OpIterator {
 
     private static final long serialVersionUID = 1L;
+    protected int totalTuples = 0;
+    protected int numTuples = 0;
 
     public boolean hasNext() throws DbException, TransactionAbortedException {
         if (!this.open)
@@ -104,6 +106,14 @@ public abstract class Operator implements OpIterator {
      */
     public void setEstimatedCardinality(int card) {
         this.estimatedCardinality = card;
+    }
+
+    public int totalTuples() {
+        return this.totalTuples;
+    }
+
+    public int numTuples() {
+        return this.numTuples;
     }
 
 }

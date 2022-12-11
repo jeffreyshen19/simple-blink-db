@@ -24,6 +24,7 @@ public class SeqScanSample implements OpIterator {
     private DbFileIterator iterator;
 
     private boolean opened = false;
+    private int numTuples;
     
     /**
      * Creates a sequential scan over the specified sample family of size n
@@ -35,6 +36,7 @@ public class SeqScanSample implements OpIterator {
         this.sampleFileTableId = sampleFileTableId;
         this.nTups = nTups;
         this.setSampleFile();
+        this.numTuples = 0;
     }
 
     private void setSampleFile() {
@@ -54,6 +56,7 @@ public class SeqScanSample implements OpIterator {
     public void open() throws DbException, TransactionAbortedException {
         this.opened = true;
         this.iterator.open();
+        this.numTuples = 0;
         
     }
 
@@ -65,6 +68,7 @@ public class SeqScanSample implements OpIterator {
 
     @Override
     public Tuple next() throws DbException, TransactionAbortedException, NoSuchElementException {
+        numTuples++;
         return iterator.next();
     }
 
@@ -86,5 +90,11 @@ public class SeqScanSample implements OpIterator {
         
     }
 
+    public int totalTuples() {
+        return this.numTuples;
+    }
     
+    public int numTuples() {
+        return this.numTuples;
+    }
 }

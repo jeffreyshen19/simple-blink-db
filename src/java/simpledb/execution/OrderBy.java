@@ -21,6 +21,8 @@ public class OrderBy extends Operator {
     private final String orderByFieldName;
     private Iterator<Tuple> it;
     private final boolean asc;
+    private int numTuples;
+    private int totalTuples;
 
     /**
      * Creates a new OrderBy node over the tuples from the iterator.
@@ -35,6 +37,8 @@ public class OrderBy extends Operator {
         this.orderByField = orderbyField;
         this.orderByFieldName = td.getFieldName(orderbyField);
         this.asc = asc;
+        this.numTuples = child.numTuples();
+        this.totalTuples = child.totalTuples();
     }
 
     public boolean isASC() {
@@ -62,6 +66,8 @@ public class OrderBy extends Operator {
         childTups.sort(new TupleComparator(orderByField, asc));
         it = childTups.iterator();
         super.open();
+        this.numTuples = child.numTuples();
+        this.totalTuples = child.totalTuples();
     }
 
     public void close() {
@@ -95,6 +101,14 @@ public class OrderBy extends Operator {
     @Override
     public void setChildren(OpIterator[] children) {
         this.child = children[0];
+    }
+    @Override
+    public int totalTuples() {
+        return this.totalTuples;
+    }
+    @Override
+    public int numTuples() {
+        return this.numTuples;
     }
 
 }

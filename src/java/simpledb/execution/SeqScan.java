@@ -26,11 +26,12 @@ public class SeqScan implements OpIterator {
     private int tableid;
     private String tableAlias;
     private boolean opened = false;
-    
+
     private DbFile db;
     private DbFileIterator iterator;
     private TupleDesc td;
-    
+    private int numTuples;
+
     /**
      * Creates a sequential scan over the specified table as a part of the
      * specified transaction.
@@ -49,6 +50,7 @@ public class SeqScan implements OpIterator {
         this.tableid = tableid;
         this.tableAlias = tableAlias;
         this.setDbFile();
+        this.numTuples = 0;
     }
 
     /**
@@ -65,7 +67,7 @@ public class SeqScan implements OpIterator {
     public String getAlias() {
         return this.tableAlias;
     }
-    
+
     /**
      * Initialize fields db and iterator, based off the table specified by this.tableid
      */
@@ -99,8 +101,9 @@ public class SeqScan implements OpIterator {
     public void open() throws DbException, TransactionAbortedException {
         this.opened = true;
         this.iterator.open();
+        this.numTuples = 0;
     }
-    
+
     /**
      * Returns the TupleDesc with field names from the underlying HeapFile,
      * prefixed with the tableAlias string from the constructor. This prefix
@@ -111,22 +114,22 @@ public class SeqScan implements OpIterator {
      * @return the TupleDesc with field names from the underlying HeapFile,
      *         prefixed with the tableAlias string from the constructor.
      */
-    public TupleDesc getTupleDesc() {        
+    public TupleDesc getTupleDesc() {
         if(this.td == null) { // We only want to generate the TupleDesc once per table
             TupleDesc td = this.db.getTupleDesc();
             Type[] types = new Type[td.numFields()];
             String[] fields = new String[td.numFields()];
-            
+
             int i = 0;
             for (Iterator<TDItem> iterator = td.iterator(); iterator.hasNext(); i++){
                 TDItem item = iterator.next();
                 types[i] = item.fieldType;
                 fields[i] = item.fieldName == null ? null : this.tableAlias + "." + item.fieldName;
             }
-            
+
             this.td = new TupleDesc(types, fields);
         }
-        
+
         return this.td;
     }
 
@@ -139,20 +142,27 @@ public class SeqScan implements OpIterator {
             TransactionAbortedException, DbException {
         Tuple nextTuple = iterator.next();
         nextTuple.resetTupleDesc(this.getTupleDesc());
+        this.numTuples++;
         return nextTuple;
     }
 
     public void close() {
         this.opened = false;
+
         this.iterator.close();
     }
 
     public void rewind() throws DbException, NoSuchElementException,
             TransactionAbortedException {
+        this.numTuples = 0;
         this.iterator.rewind();
     }
-    
-    public TransactionId getTransactionId() {
-        return tid;
+
+    public int totalTuples(){
+        return this.numTuples;
+    }
+
+    public int numTuples() {
+        return this.totalTuples();
     }
 }

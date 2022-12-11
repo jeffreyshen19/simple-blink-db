@@ -28,6 +28,7 @@ public class StringAggregator implements Aggregator {
     private int afield;
     private Op what;
     private Map<Object, ArrayList<Tuple>> groups; // Maps group field value to group
+    private int nTups;
 
     /**
      * Aggregate constructor
@@ -47,6 +48,7 @@ public class StringAggregator implements Aggregator {
         this.what = what;
         
         this.groups = new HashMap<>();
+        this.nTups = 0;
     }
 
     /**
@@ -66,6 +68,7 @@ public class StringAggregator implements Aggregator {
         }
         
         groups.get(fieldValue).add(tup);
+        this.nTups++;
     }
 
     /**
@@ -78,6 +81,11 @@ public class StringAggregator implements Aggregator {
      */
     public OpIterator iterator() {
         return new AggregatorIterator(groups, gbfieldtype, gbfield, afield, what);
+    }
+
+    @Override
+    public int getNumTups() {
+        return nTups;
     }
 
 }

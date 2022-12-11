@@ -23,6 +23,8 @@ public class Aggregate extends Operator {
     private Aggregator.Op aop;
     private Aggregator aggregator; 
     private OpIterator aggregateIterator;
+    private int totalTuples;
+    private int numTuples;
 
     /**
      * Constructor.
@@ -50,6 +52,26 @@ public class Aggregate extends Operator {
             case STRING_TYPE: 
                 aggregator = new StringAggregator(gfield,  gfield == - 1 ? null : child.getTupleDesc().getFieldType(gfield), afield, aop);
         }
+        this.totalTuples = child.totalTuples();
+        this.numTuples = child.numTuples();
+
+    }
+
+    /**
+     * @return The number of tuples the aggregate op was applied over
+     */
+    public int getNumTups() {
+        return  aggregator.getNumTups();
+    }
+
+    /**
+     * @return sample variance
+     */
+    public double getSampleVariance() {
+        // you can only get sample variance from IntFields
+        assert child.getTupleDesc().getFieldType(afield).equals(Type.INT_TYPE);
+
+        return ((IntegerAggregator) aggregator).getSampleVariance();
     }
 
     /**
@@ -105,6 +127,8 @@ public class Aggregate extends Operator {
         while(child.hasNext()) aggregator.mergeTupleIntoGroup(child.next());
         aggregateIterator = aggregator.iterator();      
         aggregateIterator.open();
+        this.totalTuples = child.totalTuples();
+        this.numTuples = child.numTuples();
     }
 
     /**
@@ -125,6 +149,8 @@ public class Aggregate extends Operator {
 
     public void rewind() throws DbException, TransactionAbortedException {
         this.aggregateIterator.rewind();
+        this.totalTuples = child.totalTuples();
+        this.numTuples = child.numTuples();
     }
 
     /**
@@ -168,6 +194,15 @@ public class Aggregate extends Operator {
     @Override
     public void setChildren(OpIterator[] children) {
         child = children[0];
+    }
+
+    @Override
+    public int totalTuples() {
+        return this.totalTuples;
+    }
+    @Override
+    public int numTuples() {
+        return this.numTuples;
     }
 
 }

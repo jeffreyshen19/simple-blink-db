@@ -79,6 +79,11 @@ public interface Aggregator extends Serializable {
     void mergeTupleIntoGroup(Tuple tup);
 
     /**
+     * @return The number of tuples the aggregate op was applied over
+     */
+    int getNumTups();
+
+    /**
      * Create a OpIterator over group aggregate results.
      *
      * @see TupleIterator for a possible helper
