@@ -12,7 +12,7 @@ def generate_dataset(n):
     year: skewed distribution
     '''
 
-    with open('test_dataset.txt', 'w') as f:
+    with open('test_dataset_5M.txt', 'w') as f:
         for id in range(n):
             quantity = random.randint(1, 100)
             year = np.random.choice([2010, 2011, 2012, 2013, 2014, 2015], p=[0.25, 0.20, 0.05, 0.10, 0.3, 0.1])
@@ -20,4 +20,4 @@ def generate_dataset(n):
             f.write(str(id) + "," + str(quantity) + "," + str(year))
             f.write('\n')
 
-generate_dataset(50000000)
+generate_dataset(5000000)

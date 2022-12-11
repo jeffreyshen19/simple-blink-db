@@ -1,5 +1,6 @@
 package simpledb.optimizer;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -10,6 +11,7 @@ import simpledb.common.DbException;
 import simpledb.execution.OpIterator;
 import simpledb.execution.Operator;
 import simpledb.execution.Query;
+import simpledb.execution.SeqScan;
 import simpledb.execution.SeqScanSample;
 import simpledb.storage.DbFile;
 import simpledb.storage.DbFileIterator;
@@ -80,7 +82,7 @@ public class SampleSelector {
             return operator;
         }
         else { // Replace SeqScan 
-            return new SeqScanSample(null, sampleFamily, n);
+            return new SeqScanSample(((SeqScan) query).getTransactionId(), sampleFamily, n);
         }
     }
     
@@ -121,14 +123,17 @@ public class SampleSelector {
      * @param query Query to execute
      * @param latencyTarget in ms
      * @return n, the number of rows to read from the sample
+     * @throws IOException 
      */
-    public static int selectSampleSizeLatency(int sampleFamily, List<Integer> sampleSizes, OpIterator query, int latencyTarget) {
+    public static int selectSampleSizeLatency(int sampleFamily, List<Integer> sampleSizes, OpIterator query, int latencyTarget) throws IOException {
         // Run two queries on small samples (size n_1 and n_2), and calculate respective latencies (y_1, y_2) 
         // Solve linear equation to relate sample size n to latency y 
-        final int n1 = sampleSizes.get(0); 
-        final int n2 = sampleSizes.get(1); 
-        final int y1 = timeQueryOnSample(sampleFamily, query, n1);
+        final int n1 = 10000; 
+        final int n2 = 20000; 
+        Database.getBufferPool().clearBufferPool();
         final int y2 = timeQueryOnSample(sampleFamily, query, n2);
+        Database.getBufferPool().clearBufferPool();
+        final int y1 = timeQueryOnSample(sampleFamily, query, n1);
 
         final double m = 1.0 * (y2 - y1) / (n2 - n1);
         final double b = y1 - m * n1;

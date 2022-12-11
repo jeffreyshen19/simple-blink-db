@@ -249,6 +249,15 @@ public class BufferPool {
         // not necessary for lab1|lab2
     }
     
+    /**
+     * Clears buffer pool for all pages dirtied by transaction
+     * @throws IOException 
+     */
+    public synchronized void clearBufferPool() throws IOException {
+        flushAllPages();
+        pages.clear();
+    }
+    
 
     /**
      * Discards a page from the buffer pool.

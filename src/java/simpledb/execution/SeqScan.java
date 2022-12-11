@@ -151,4 +151,8 @@ public class SeqScan implements OpIterator {
             TransactionAbortedException {
         this.iterator.rewind();
     }
+    
+    public TransactionId getTransactionId() {
+        return tid;
+    }
 }
