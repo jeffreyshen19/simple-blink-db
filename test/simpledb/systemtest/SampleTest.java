@@ -3,21 +3,27 @@ package simpledb.systemtest;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
-
 import simpledb.common.Database;
 import simpledb.common.Type;
+import simpledb.execution.Aggregate;
+import simpledb.execution.Aggregator;
+import simpledb.execution.Filter;
 import simpledb.execution.OpIterator;
+import simpledb.execution.Predicate;
 import simpledb.execution.SeqScan;
 import simpledb.optimizer.SampleSelector;
 import simpledb.storage.BufferPool;
 import simpledb.storage.HeapFile;
 import simpledb.storage.HeapFileEncoder;
+import simpledb.storage.IntField;
 import simpledb.storage.SampleDBFile;
 import simpledb.storage.TupleDesc;
 import simpledb.transaction.TransactionId;
@@ -28,6 +34,7 @@ public class SampleTest {
     private SampleDBFile sf;
     private TransactionId tid;
     private List<Integer> sampleSizes;
+    private List<OpIterator> queries;
     private TupleDesc td;
 
     /**
@@ -59,6 +66,56 @@ public class SampleTest {
         }
         
         System.out.println("Finished generating samples");
+        
+        // Add queries to query workload 
+        this.queries = getQueryWorkload();
+    }
+    
+    private List<OpIterator> getQueryWorkload(){
+        List<OpIterator> queries = new ArrayList<>();
+        OpIterator seqscan = new SeqScan(null, hf.getId(), "");
+        
+        // SELECT COUNT/AVG/SUM(quantity) FROM table;
+        queries.add(new Aggregate(seqscan, 1, -1, Aggregator.Op.COUNT)); 
+        queries.add(new Aggregate(seqscan, 1, -1, Aggregator.Op.AVG)); 
+        queries.add(new Aggregate(seqscan, 1, -1, Aggregator.Op.SUM)); 
+        
+        // SELECT COUNT/AVG/SUM(quantity) FROM table WHERE quantity < 50
+        Predicate p = new Predicate(1, Predicate.Op.LESS_THAN, new IntField(50));
+        OpIterator filter = new Filter(p, seqscan);
+        queries.add(new Aggregate(filter, 1, -1, Aggregator.Op.COUNT)); 
+        queries.add(new Aggregate(filter, 1, -1, Aggregator.Op.AVG)); 
+        queries.add(new Aggregate(filter, 1, -1, Aggregator.Op.SUM)); 
+        
+        // SELECT COUNT/AVG/SUM(quantity) FROM table WHERE YEAR >= 2013 AND QUANTITY > 10
+        Predicate p1 = new Predicate(1, Predicate.Op.GREATER_THAN, new IntField(10));
+        Predicate p2 = new Predicate(2, Predicate.Op.GREATER_THAN_OR_EQ, new IntField(2013));
+        OpIterator filter1 = new Filter(p2, seqscan);
+        OpIterator filter2 = new Filter(p1, filter1);
+        queries.add(new Aggregate(filter2, 1, -1, Aggregator.Op.COUNT));
+        queries.add(new Aggregate(filter2, 1, -1, Aggregator.Op.AVG));
+        queries.add(new Aggregate(filter2, 1, -1, Aggregator.Op.SUM));
+        
+        // SELECT COUNT/AVG/SUM(quantity) FROM table WHERE year = 2010
+        p = new Predicate(2, Predicate.Op.EQUALS, new IntField(2010));
+        filter = new Filter(p, seqscan);
+        queries.add(new Aggregate(filter, 1, -1, Aggregator.Op.COUNT)); 
+        queries.add(new Aggregate(filter, 1, -1, Aggregator.Op.AVG)); 
+        queries.add(new Aggregate(filter, 1, -1, Aggregator.Op.SUM)); 
+        
+        // SELECT COUNT/AVG/SUM(quantity) FROM table GROUP BY year
+        queries.add(new Aggregate(seqscan, 1, 2, Aggregator.Op.COUNT)); 
+        queries.add(new Aggregate(seqscan, 1, 2, Aggregator.Op.AVG)); 
+        queries.add(new Aggregate(seqscan, 1, 2, Aggregator.Op.SUM));
+        
+        // SELECT COUNT/AVG/SUM(quantity) FROM table WHERE quantity < 20 GROUP BY year
+        p = new Predicate(1, Predicate.Op.LESS_THAN, new IntField(20));
+        filter = new Filter(p, seqscan);
+        queries.add(new Aggregate(filter, 1, 2, Aggregator.Op.COUNT)); 
+        queries.add(new Aggregate(filter, 1, 2, Aggregator.Op.AVG)); 
+        queries.add(new Aggregate(filter, 1, 2, Aggregator.Op.SUM)); 
+        
+        return queries;
     }
     
     /**
@@ -83,23 +140,30 @@ public class SampleTest {
      */
     @Test
     public void evaluateLatencySelection() throws Exception {
-        OpIterator query = new SeqScan(null, hf.getId(), "");
+        
+        FileWriter outputfile = new FileWriter("latency-evaluation.csv");
+        
+        String result = "";
         
         // every 5 ms up to 75ms
         for(int targetTime = 5; targetTime <= 75; targetTime += 5) {
-            System.out.print(targetTime);
+            result += targetTime;
             
-            for(int i = 0; i < 10; i++) {
+            for(int i = 0; i < queries.size(); i++) {
+                OpIterator query = queries.get(i);
                 int n = SampleSelector.selectSampleSizeLatency(sf.getId(), sampleSizes, query, targetTime);
                 Database.getBufferPool().clearBufferPool();
                 int actualTime = SampleSelector.timeQueryOnSample(sf.getId(), query, n);
-                System.out.print("," + actualTime);
+                result += "," + actualTime;
                 
             }
 
-            System.out.println();
+            result += "\n";
             
         }
+        
+        outputfile.write(result);
+        outputfile.close();
         
     }
      
