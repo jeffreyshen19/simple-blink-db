@@ -21,12 +21,14 @@ public class SampleDBFile extends HeapFile{
     private final TupleDesc td;
     private final QueryColumnSet stratifiedColumns;
     private final List<Integer> sampleSizes;
+    private final TransactionId tid;
     
     public SampleDBFile(File f, List<Integer> sampleSizes, QueryColumnSet stratifiedColumns, TupleDesc td) throws DbException, IOException, TransactionAbortedException {
         super(f, td);
         this.stratifiedColumns = stratifiedColumns;
         this.sampleSizes = sampleSizes;
         this.td = td;
+        this.tid = new TransactionId();
     }
     
     /**
@@ -65,7 +67,7 @@ public class SampleDBFile extends HeapFile{
         
         for(i = 0; i < maxSize; i++) {
             Tuple tuple = reservoir.get(i);
-            Database.getBufferPool().insertTuple(null, this.getId(), tuple);
+            Database.getBufferPool().insertTuple(tid, this.getId(), tuple);
         }
     }
 
@@ -123,7 +125,7 @@ public class SampleDBFile extends HeapFile{
         
         for(i = 0; i < maxSize; i++) {
             Tuple tuple = reservoir.get(i);
-            insertTuple(null, tuple);
+            insertTuple(tid, tuple);
         }
     }
 

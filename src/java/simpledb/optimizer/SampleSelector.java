@@ -1,5 +1,6 @@
 package simpledb.optimizer;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Arrays;
@@ -15,6 +16,7 @@ import simpledb.execution.Aggregate;
 import simpledb.execution.OpIterator;
 import simpledb.execution.Operator;
 import simpledb.execution.Query;
+import simpledb.execution.SeqScan;
 import simpledb.execution.SeqScanSample;
 import simpledb.execution.Aggregator.Op;
 import simpledb.storage.DbFile;
@@ -29,7 +31,7 @@ public class SampleSelector {
     /**
      * TODO: Victor
      * Given a QueryColumnSet q_j, return the sample family to choose
-     * 
+     *
      * @param qcs
      * @return the tableid of a sample in the catalog
      */
@@ -47,7 +49,7 @@ public class SampleSelector {
                 if (!sample.isStratified()) continue;
 
                 QueryColumnSet sampleQCS = sample.getStratifiedColumnSet();
-                //get the smallest sample that fully contains it 
+                //get the smallest sample that fully contains it
                 if (sampleQCS.getColumns().contains(qcs.getColumns()) &&
                     sample.getSampleSizes().get(0) < minValidSampleSize) {
                         minValidSampleSize = sample.getSampleSizes().get(0);
@@ -65,7 +67,7 @@ public class SampleSelector {
         // else- run query on each sample family and find one with largest selectivity
         for (Iterator<Integer> iterator = catalog.tableIdIterator(); iterator.hasNext(); ) {
             int tableid = iterator.next();
-            if(catalog.isSample(tableid)) { // Filter for samples - Jeffrey 
+            if(catalog.isSample(tableid)) { // Filter for samples - Jeffrey
                 SampleDBFile sample = (SampleDBFile) catalog.getDatabaseFile(tableid);
                 //get number of tuples in smallest sample in sampleFamily
                 int totalTuples = sample.getSampleSizes().get(0);
@@ -75,13 +77,13 @@ public class SampleSelector {
                 // modify remove agg
                 // modify make top agg
                 //OpIterator noAggQuery = modifyOperatorRemoveAgg(sampleQuery);
-                
+
 
                 sampleQuery.open();
                 runOperator(sampleQuery);
                 int totalQueryTuples = sampleQuery.totalTuples();
                 int numTuples = sampleQuery.numTuples();
-                
+
                 double ratio = numTuples/((double) totalQueryTuples);
                 tableidToRatio.put(tableid, ratio);
             }
@@ -93,13 +95,13 @@ public class SampleSelector {
         }
 
 
-        
+
         throw new DbException("Should not have reached here");
     }
 
     /**
      * Runs an operator until completion
-     * 
+     *
      * @param query
      */
     private static void runOperator(OpIterator query) {
@@ -150,11 +152,11 @@ public class SampleSelector {
             return query;
         }
     }
-    
-    
+
+
     /**
      * Modifies an OpIterator to point to SeqScanSample instead of SeqScan
-     * 
+     *
      * @param sampleFamily
      * @param query
      * @param n
@@ -170,14 +172,20 @@ public class SampleSelector {
             }
             operator.setChildren(newChildren);
             return operator;
+<<<<<<< HEAD
+        }
+        else { // Replace SeqScan
+            return new SeqScanSample(((SeqScan) query).getTransactionId(), sampleFamily, n);
+=======
         } else { // Replace SeqScan
             return new SeqScanSample(null, sampleFamily, n);
+>>>>>>> 34be7b4588dd9fa350f916bf1b8922e242bd5dab
         }
     }
 
     /**
      * Return the latency of running a query on a sample of size n
-     * 
+     *
      * @param sampleFamily the tableid of the sample family
      * @param query        Query to execute, pointing to the original table not the
      *                     sample
@@ -197,7 +205,7 @@ public class SampleSelector {
     /**
      * Given a sampleFamily and error target, return the estimated size of the
      * sample satisfying this target
-     * 
+     *
      * @param sampleFamily       the tableid of the sample family
      * @param sampleSize         the smallest sample size present in the sample family
      * @param tableSize          the number of tuples in the actual table
@@ -218,7 +226,7 @@ public class SampleSelector {
         // uses statistics from Table 2 in the BlinkDB paper
         double sampleVariance = aggregate.getSampleVariance();
         double selectednTups = aggregate.getNumTups();
-        double variance, c; 
+        double variance, c;
         switch (aggregate.aggregateOp()) {
             case AVG:
                 variance = sampleVariance / selectednTups;
@@ -238,20 +246,29 @@ public class SampleSelector {
         double sd = Math.sqrt(variance);
         aggregate.close();
 
-        // standard error = sd / sqrt(n) 
+        // standard error = sd / sqrt(n)
         return (int) Math.ceil(Math.pow(sd / errorTarget, 2));
     }
 
     /**
      * Given a sampleFamily and latency target, return the estimated size of the
      * sample satisfying this target
-     * 
+     *
      * @param sampleFamily  the tableid of the sample family
      * @param sampleSizes   the sampleSizes used to generate the sample
      * @param query         Query to execute
      * @param latencyTarget in ms
      * @return n, the number of rows to read from the sample
+     * @throws IOException
      */
+<<<<<<< HEAD
+    public static int selectSampleSizeLatency(int sampleFamily, List<Integer> sampleSizes, OpIterator query, int latencyTarget) throws IOException {
+        // Run two queries on small samples (size n_1 and n_2), and calculate respective latencies (y_1, y_2)
+        // Solve linear equation to relate sample size n to latency y
+        final int n1 = 10000;
+        final int n2 = 20000;
+        Database.getBufferPool().clearBufferPool();
+=======
     public static int selectSampleSizeLatency(int sampleFamily, List<Integer> sampleSizes, OpIterator query,
             int latencyTarget) {
         // Run two queries on small samples (size n_1 and n_2), and calculate respective
@@ -260,7 +277,10 @@ public class SampleSelector {
         final int n1 = sampleSizes.get(0);
         final int n2 = sampleSizes.get(1);
         final int y1 = timeQueryOnSample(sampleFamily, query, n1);
+>>>>>>> 34be7b4588dd9fa350f916bf1b8922e242bd5dab
         final int y2 = timeQueryOnSample(sampleFamily, query, n2);
+        Database.getBufferPool().clearBufferPool();
+        final int y1 = timeQueryOnSample(sampleFamily, query, n1);
 
         final double m = 1.0 * (y2 - y1) / (n2 - n1);
         final double b = y1 - m * n1;

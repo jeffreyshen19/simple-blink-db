@@ -30,7 +30,6 @@ public class BufferPool {
      */
     private HashMap<PageId, Page> pages;
     private int numPages; // max number of pages in buffer pool
-    private PageId mru;
     
     /**
      * Bytes per page, including header.
@@ -101,7 +100,6 @@ public class BufferPool {
             if(this.pages.size() == this.numPages) this.evictPage();
             
             pages.put(pid, page);
-            this.addMRU(pid);
             return page;
         } 
         catch (IllegalArgumentException e) {
@@ -178,7 +176,6 @@ public class BufferPool {
         
         for(Page page : dirtied) {
             page.markDirty(true, tid);
-            this.addMRU(page.getId());
             pages.put(page.getId(), page);
         }
     }
@@ -202,8 +199,7 @@ public class BufferPool {
         List<Page> dirtied = dbFile.deleteTuple(tid, t);
                 
         for(Page page : dirtied) {
-            page.markDirty(true, tid);
-            this.addMRU(page.getId());         
+            page.markDirty(true, tid);       
             pages.put(page.getId(), page);
         }
     }
@@ -230,7 +226,6 @@ public class BufferPool {
      * are removed from the cache so they can be reused safely
      */
     public synchronized void removePage(PageId pid) {
-        if(pid == mru) mru = null;
         pages.remove(pid);
     }
 
@@ -255,22 +250,22 @@ public class BufferPool {
     }
     
     /**
-     * Adds page to the most recently used queue
+     * Clears buffer pool for all pages dirtied by transaction
+     * @throws IOException 
      */
-    private synchronized void addMRU(PageId pid) {
-        mru = pid;
+    public synchronized void clearBufferPool() throws IOException {
+        flushAllPages();
+        pages.clear();
     }
+    
 
     /**
      * Discards a page from the buffer pool.
      * Flushes the page to disk to ensure dirty pages are updated on disk.
      */
     private synchronized void evictPage() throws DbException {
-        // MRU Eviction Policy 
-        PageId pidToEvict;
-        if(mru == null) pidToEvict = pages.keySet().iterator().next(); // If MRU is undefined, just evict the first page is the set 
-        else pidToEvict = mru;
-        
+        // Randomly evict a page
+        PageId pidToEvict = pages.keySet().iterator().next(); 
         Page pageToEvict = pages.get(pidToEvict);
         if(pageToEvict.isDirty() != null) {
             try {
@@ -279,7 +274,6 @@ public class BufferPool {
                 throw new DbException("");
             }
         }
-        mru = null;
         removePage(pidToEvict);
     }
 
