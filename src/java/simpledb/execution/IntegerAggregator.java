@@ -27,6 +27,10 @@ public class IntegerAggregator implements Aggregator {
     private int afield;
     private Op what;
     private Map<Object, ArrayList<Tuple>> groups; // Maps group field value to group. If no grouping, all tuples are in group with key null
+
+    private double mean; 
+    private double variance; 
+    private int nTups = 0;
     
     /**
      * Aggregate constructor
@@ -57,7 +61,19 @@ public class IntegerAggregator implements Aggregator {
     public void mergeTupleIntoGroup(Tuple tup) {
         Object fieldValue;
         
-        if(gbfieldtype == Type.INT_TYPE) fieldValue = ((IntField) tup.getField(gbfield)).getValue();
+        if(gbfieldtype == Type.INT_TYPE) {
+            fieldValue = ((IntField) tup.getField(gbfield)).getValue();
+            double val = (double) fieldValue;
+            // calculate mean and variance if the field type is INT
+            if (this.nTups < 1) {
+                this.mean = val;
+                this.variance = 0;
+            } else {
+                double newMean = this.mean + (val - this.mean) / this.nTups;
+                this.variance = this.variance + (val - this.mean) * (val - newMean);
+                this.mean = newMean;
+            }
+        }
         else if(gbfieldtype == Type.STRING_TYPE) fieldValue = ((StringField) tup.getField(gbfield)).getValue();
         else fieldValue = null; // No grouping
         
@@ -66,6 +82,22 @@ public class IntegerAggregator implements Aggregator {
         }
         
         groups.get(fieldValue).add(tup);
+        this.nTups++;
+    }
+
+    /**
+     * @return Sample Mean
+     */
+    public double getSampleVariance() {
+        return this.variance;
+    }
+
+    /**
+     * @return number of tuples selected by query 
+     */
+    @Override
+    public int getNumTups() {
+        return this.nTups;
     }
 
     /**

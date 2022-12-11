@@ -53,6 +53,23 @@ public class Aggregate extends Operator {
     }
 
     /**
+     * @return The number of tuples the aggregate op was applied over
+     */
+    public int getNumTups() {
+        return  aggregator.getNumTups();
+    }
+
+    /**
+     * @return sample variance
+     */
+    public double getSampleVariance() {
+        // you can only get sample variance from IntFields
+        assert child.getTupleDesc().getFieldType(afield).equals(Type.INT_TYPE);
+
+        return ((IntegerAggregator) aggregator).getSampleVariance();
+    }
+
+    /**
      * @return If this aggregate is accompanied by a groupby, return the groupby
      *         field index in the <b>INPUT</b> tuples. If not, return
      *         {@link Aggregator#NO_GROUPING}
