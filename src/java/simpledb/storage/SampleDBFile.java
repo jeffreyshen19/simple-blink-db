@@ -2,8 +2,6 @@ package simpledb.storage;
 
 import simpledb.common.Database;
 import simpledb.common.DbException;
-import simpledb.common.Debug;
-import simpledb.common.Permissions;
 import simpledb.optimizer.QueryColumnSet;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
@@ -12,7 +10,6 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -75,13 +72,14 @@ public class SampleDBFile extends HeapFile{
     public void createStratifiedSamples(DbFile origFile, int cap) throws DbException, IOException, TransactionAbortedException {
 
     	// get indices of the stratified columns 	
-    	List<Integer> colIndices = Arrays.asList(new Integer[this.stratifiedColumns.getNumCols()]);
+        List<Integer> colIndices = new ArrayList<>();
     	Set<String> colNames = this.stratifiedColumns.getColumns();
     	for (int i = 0; i < this.td.numFields(); i++) {
     		if (colNames.contains(this.td.getFieldName(i))) {
     			colIndices.add(i);
     		}
     	}
+        assert colIndices.size() == this.stratifiedColumns.getNumCols(); // double check 
 
         // Sample maxSize integers from origFile using reservoir sampling (O(n))
     	int maxSize = sampleSizes.get(sampleSizes.size() - 1); // maxSize is the size of the *largest* sample
