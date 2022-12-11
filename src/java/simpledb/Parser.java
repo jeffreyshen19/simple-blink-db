@@ -712,6 +712,8 @@ class TupleArrayIterator implements OpIterator {
     private static final long serialVersionUID = 1L;
     final List<Tuple> tups;
     Iterator<Tuple> it = null;
+    private int numTuples = 0;
+    private int totalTuples = 0;
 
     public TupleArrayIterator(List<Tuple> tups) {
         this.tups = tups;
@@ -758,6 +760,15 @@ class TupleArrayIterator implements OpIterator {
      * Closes the iterator.
      */
     public void close() {
+    }
+
+    @Override
+    public int totalTuples() {
+        return this.totalTuples;
+    }
+    @Override
+    public int numTuples() {
+        return this.numTuples;
     }
 
 }

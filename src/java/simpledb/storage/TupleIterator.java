@@ -15,6 +15,8 @@ public class TupleIterator implements OpIterator {
     Iterator<Tuple> i = null;
     TupleDesc td = null;
     Iterable<Tuple> tuples = null;
+    private int numTuples;
+    private int totalTuples;
 
     /**
      * Constructs an iterator from the specified Iterable, and the specified
@@ -31,6 +33,8 @@ public class TupleIterator implements OpIterator {
             if (!t.getTupleDesc().equals(td))
                 throw new IllegalArgumentException(
                         "incompatible tuple in tuple set");
+            numTuples++;
+            totalTuples++;
         }
     }
 
@@ -57,5 +61,14 @@ public class TupleIterator implements OpIterator {
 
     public void close() {
         i = null;
+    }
+
+    @Override
+    public int totalTuples() {
+        return this.totalTuples;
+    }
+    @Override
+    public int numTuples() {
+        return this.numTuples;
     }
 }
