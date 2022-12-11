@@ -27,6 +27,8 @@ public class AggregatorIterator implements OpIterator{
     private Op what;
     private Type gbfieldtype;
     private Set valid;
+    private int totalTuples;
+    private int numTuples;
     
     public AggregatorIterator(Map<Object, ArrayList<Tuple>> groups, Type gbfieldtype, int gbfield, int afield, Op what) {
         this.mapIterator = groups.keySet().iterator();
@@ -127,4 +129,12 @@ public class AggregatorIterator implements OpIterator{
         this.opened = false;
     }
     
+    @Override
+    public int totalTuples() {
+        return this.totalTuples;
+    }
+    @Override
+    public int numTuples() {
+        return this.numTuples;
+    }
 }

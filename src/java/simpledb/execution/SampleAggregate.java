@@ -26,6 +26,8 @@ public class SampleAggregate extends Operator {
     private int totalTups; 
     private Aggregator.Op op;
     private boolean grouping; // whether the child has group by field
+    private int numTuples;
+    private int totalTuples;
     
     public SampleAggregate(OpIterator child, int sampleSize, int totalTups, Aggregator.Op op) {
         this.child = child;
@@ -33,12 +35,16 @@ public class SampleAggregate extends Operator {
         this.totalTups = totalTups;
         this.op = op; 
         this.grouping = child.getTupleDesc().numFields() > 1;
+        this.numTuples = child.numTuples();
+        this.totalTuples = child.totalTuples();
     }
 
     @Override
     public void open() throws DbException, TransactionAbortedException {
         super.open();
         child.open();
+        this.numTuples = child.numTuples();
+        this.totalTuples = child.totalTuples();
     }
 
     @Override
@@ -109,4 +115,14 @@ public class SampleAggregate extends Operator {
     public TupleDesc getTupleDesc() {
         return child.getTupleDesc();
     } 
+
+    @Override
+    public int totalTuples() {
+        return this.totalTuples;
+    }
+
+    @Override
+    public int numTuples() {
+        return this.numTuples;
+    }
 }

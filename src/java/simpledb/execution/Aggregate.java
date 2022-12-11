@@ -23,6 +23,8 @@ public class Aggregate extends Operator {
     private Aggregator.Op aop;
     private Aggregator aggregator; 
     private OpIterator aggregateIterator;
+    private int totalTuples;
+    private int numTuples;
 
     /**
      * Constructor.
@@ -50,6 +52,9 @@ public class Aggregate extends Operator {
             case STRING_TYPE: 
                 aggregator = new StringAggregator(gfield,  gfield == - 1 ? null : child.getTupleDesc().getFieldType(gfield), afield, aop);
         }
+        this.totalTuples = child.totalTuples();
+        this.numTuples = child.numTuples();
+
     }
 
     /**
@@ -105,6 +110,8 @@ public class Aggregate extends Operator {
         while(child.hasNext()) aggregator.mergeTupleIntoGroup(child.next());
         aggregateIterator = aggregator.iterator();      
         aggregateIterator.open();
+        this.totalTuples = child.totalTuples();
+        this.numTuples = child.numTuples();
     }
 
     /**
@@ -125,6 +132,8 @@ public class Aggregate extends Operator {
 
     public void rewind() throws DbException, TransactionAbortedException {
         this.aggregateIterator.rewind();
+        this.totalTuples = child.totalTuples();
+        this.numTuples = child.numTuples();
     }
 
     /**
@@ -168,6 +177,15 @@ public class Aggregate extends Operator {
     @Override
     public void setChildren(OpIterator[] children) {
         child = children[0];
+    }
+
+    @Override
+    public int totalTuples() {
+        return this.totalTuples;
+    }
+    @Override
+    public int numTuples() {
+        return this.numTuples;
     }
 
 }

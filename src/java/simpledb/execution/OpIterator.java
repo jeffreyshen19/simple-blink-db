@@ -64,4 +64,19 @@ public interface OpIterator extends Serializable {
      */
     void close();
 
+    /**
+     * Returns the total number of tuples that have been processed underneath or by this OpIterator
+     * 
+     * @return Returns the total number of tuples that have been processed underneath or by this OpIterator
+     */
+    int totalTuples();
+
+    /**
+     * Returns the number of tuples that have not been filtered out underneath or by this OpIterator
+     * @return Returns the number of tuples that have not been filtered out underneath or by this OpIterator
+     */
+    int numTuples();
+
+
+
 }

@@ -19,6 +19,8 @@ public class Join extends Operator {
     private OpIterator child1;
     private OpIterator child2; 
     private Tuple t1; // Tuple from child1 we are on.
+    private int totalTuples;
+    private int numTuples;
 
     /**
      * Constructor. Accepts two children to join and the predicate to join them
@@ -32,6 +34,8 @@ public class Join extends Operator {
         this.p = p;
         this.child1 = child1;
         this.child2 = child2;
+        this.totalTuples = child1.totalTuples() + child2.totalTuples();
+        this.numTuples = child1.numTuples() + child2.numTuples();
     }
 
     public JoinPredicate getJoinPredicate() {
@@ -67,6 +71,8 @@ public class Join extends Operator {
         super.open();
         this.child1.open();
         this.child2.open();
+        this.totalTuples = child1.totalTuples() + child2.totalTuples();
+        this.numTuples = child1.numTuples() + child2.numTuples();
     }
 
     public void close() {
@@ -143,6 +149,15 @@ public class Join extends Operator {
     public void setChildren(OpIterator[] children) {
         this.child1 = children[0];
         this.child2 = children[1];
+    }
+
+    @Override
+    public int totalTuples() {
+        return this.totalTuples;
+    }
+    @Override
+    public int numTuples() {
+        return this.numTuples;
     }
 
 }

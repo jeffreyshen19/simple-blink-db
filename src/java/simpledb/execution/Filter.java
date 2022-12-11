@@ -15,6 +15,8 @@ public class Filter extends Operator {
     private static final long serialVersionUID = 1L;
     private Predicate p;
     private OpIterator child;
+    private int totalTuples;
+    private int numTuples;
 
     /**
      * Constructor accepts a predicate to apply and a child operator to read
@@ -26,6 +28,8 @@ public class Filter extends Operator {
     public Filter(Predicate p, OpIterator child) {
         this.p = p;
         this.child = child;
+        this.totalTuples = child.totalTuples();
+        this.numTuples = 0;
     }
 
     public Predicate getPredicate() {
@@ -40,6 +44,7 @@ public class Filter extends Operator {
             TransactionAbortedException {
         super.open();
         this.child.open();
+        this.numTuples = 0;
     }
 
     public void close() {
@@ -49,6 +54,7 @@ public class Filter extends Operator {
 
     public void rewind() throws DbException, TransactionAbortedException {
         this.child.rewind();
+        this.numTuples = 0;
     }
 
     /**
@@ -69,7 +75,7 @@ public class Filter extends Operator {
             next = child.next();
         }
         while(!this.p.filter(next));
-        
+        this.numTuples++;
         return next;
     }
 

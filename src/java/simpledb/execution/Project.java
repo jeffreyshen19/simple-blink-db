@@ -18,6 +18,8 @@ public class Project extends Operator {
     private OpIterator child;
     private final TupleDesc td;
     private final List<Integer> outFieldIds;
+    private int numTuples;
+    private int totalTuples;
 
     /**
      * Constructor accepts a child operator to read tuples to apply projection
@@ -43,6 +45,8 @@ public class Project extends Operator {
             fieldAr[i] = childtd.getFieldName(fieldList.get(i));
         }
         td = new TupleDesc(types, fieldAr);
+        this.numTuples = child.numTuples();
+        this.totalTuples = child.totalTuples();
     }
 
     public TupleDesc getTupleDesc() {
@@ -53,6 +57,8 @@ public class Project extends Operator {
             TransactionAbortedException {
         child.open();
         super.open();
+        this.numTuples = child.numTuples();
+        this.totalTuples = child.totalTuples();
     }
 
     public void close() {
@@ -92,6 +98,16 @@ public class Project extends Operator {
         if (this.child != children[0]) {
             this.child = children[0];
         }
+    }
+
+    @Override
+    public int totalTuples() {
+        return this.totalTuples;
+    }
+
+    @Override
+    public int numTuples() {
+        return this.numTuples;
     }
 
 }

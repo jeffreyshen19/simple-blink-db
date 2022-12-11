@@ -18,6 +18,8 @@ public class HashEquiJoin extends Operator {
     private final TupleDesc comboTD;
     transient private Tuple t1 = null;
     transient private Tuple t2 = null;
+    private int totalTuples;
+    private int numTuples;
 
     /**
      * Constructor. Accepts to children to join and the predicate to join them
@@ -32,6 +34,8 @@ public class HashEquiJoin extends Operator {
         this.child1 = child1;
         this.child2 = child2;
         comboTD = TupleDesc.merge(child1.getTupleDesc(), child2.getTupleDesc());
+        this.totalTuples = child1.totalTuples() + child2.totalTuples();
+        this.numTuples = child1.numTuples() + child2.numTuples();
     }
 
     public JoinPredicate getJoinPredicate() {
@@ -73,6 +77,8 @@ public class HashEquiJoin extends Operator {
         child2.open();
         loadMap();
         super.open();
+        this.numTuples = 0;
+        this.totalTuples = child1.totalTuples() + child2.totalTuples();
     }
 
     public void close() {
@@ -88,6 +94,7 @@ public class HashEquiJoin extends Operator {
     public void rewind() throws DbException, TransactionAbortedException {
         child1.rewind();
         child2.rewind();
+        this.numTuples = 0;
     }
 
     transient Iterator<Tuple> listIt = null;
@@ -128,6 +135,7 @@ public class HashEquiJoin extends Operator {
 
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
         if (listIt != null && listIt.hasNext()) {
+            this.numTuples++;
             return processList();
         }
 
@@ -141,7 +149,7 @@ public class HashEquiJoin extends Operator {
             if (l == null)
                 continue;
             listIt = l.iterator();
-
+            this.numTuples++;
             return processList();
 
         }
@@ -149,6 +157,7 @@ public class HashEquiJoin extends Operator {
         // child2 is done: advance child1
         child2.rewind();
         if (loadMap()) {
+            this.numTuples++;
             return fetchNext();
         }
 
@@ -164,6 +173,15 @@ public class HashEquiJoin extends Operator {
     public void setChildren(OpIterator[] children) {
         this.child1 = children[0];
         this.child2 = children[1];
+    }
+
+    @Override
+    public int totalTuples() {
+        return this.totalTuples;
+    }
+    @Override
+    public int numTuples() {
+        return this.numTuples;
     }
 
 }

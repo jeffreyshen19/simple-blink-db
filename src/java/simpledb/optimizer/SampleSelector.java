@@ -33,7 +33,6 @@ public class SampleSelector {
      * @return the tableid of a sample in the catalog
      */
     public int selectSample(QueryColumnSet qcs, OpIterator query) throws DbException, TransactionAbortedException{
-        // still working on it rn - Victor
         Catalog catalog = Database.getCatalog();
 
         int minValidTableID = -1;
@@ -69,17 +68,20 @@ public class SampleSelector {
                 SampleDBFile sample = (SampleDBFile) catalog.getDatabaseFile(tableid);
                 //get number of tuples in smallest sample in sampleFamily
                 int totalTuples = sample.getSampleSizes().get(0);
-                int matchTuples = 0;
+                //int matchTuples = 0;
 
                 OpIterator sampleQuery = modifyOperatorSampleFamily(tableid, query, totalTuples);
                 // modify remove agg
                 // modify make top agg
-                OpIterator countQuery = modifyOperatorCount(sampleQuery, false);
-
-                countQuery.open();
-                Tuple countTuple = countQuery.next();
+                //OpIterator noAggQuery = modifyOperatorRemoveAgg(sampleQuery);
                 
-                double ratio = matchTuples/((double) totalTuples);
+
+                sampleQuery.open();
+                runOperator(sampleQuery);
+                int totalQueryTuples = sampleQuery.totalTuples();
+                int numTuples = sampleQuery.numTuples();
+                
+                double ratio = numTuples/((double) totalQueryTuples);
                 tableidToRatio.put(tableid, ratio);
             }
         }
@@ -115,28 +117,28 @@ public class SampleSelector {
     /**
      * Modieifes an OpIterator to have its aggregation function be Count
      */
-    private OpIterator modifyOperatorCount(OpIterator query, boolean aggEncountered) {
+    private OpIterator modifyOperatorRemoveAgg(OpIterator query) {
         if (query instanceof Operator) {
             Operator operator = (Operator) query;
             OpIterator[] children = operator.getChildren();
+            //return if no children - leaf node
+            if (children.length == 0) return query;
+
             OpIterator[] newChildren = new OpIterator[children.length];
             int childIndex = 0;
             for (OpIterator child : children) {
+                //check children to see if they are AGGREGATE
+                //if so, then append child's children to current operator
                 if (child instanceof Aggregate) {
-                    Aggregate currAgg = (Aggregate) query;
-                    //want count of only very top query
-                    if (aggEncountered) {
-                        Aggregate newAgg = new Aggregate(currAgg.getChildren()[0], currAgg.aggregateField(), currAgg.groupField(), Op.COUNT);
-                        modifyOperatorCount(newAgg, false);
-                        newChildren[childIndex] = newAgg;
-                    } else {
-                        OpIterator[] childchildren = ((Operator) child).getChildren();
-
-
-                    }
+                    OpIterator[] childchildren = ((Operator) child).getChildren();
+                    for (OpIterator childChild : childchildren) {
+                        newChildren[childIndex] = childChild;
+                        modifyOperatorRemoveAgg(childChild);
+                        childIndex++;
+                }
                 } else {
-                    modifyOperatorCount(child, aggEncountered);
                     newChildren[childIndex] = child;
+                    modifyOperatorRemoveAgg(child);
                 }
                 childIndex++;
             }

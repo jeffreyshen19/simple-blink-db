@@ -30,6 +30,7 @@ public class SeqScan implements OpIterator {
     private DbFile db;
     private DbFileIterator iterator;
     private TupleDesc td;
+    private int numTuples;
     
     /**
      * Creates a sequential scan over the specified table as a part of the
@@ -49,6 +50,7 @@ public class SeqScan implements OpIterator {
         this.tableid = tableid;
         this.tableAlias = tableAlias;
         this.setDbFile();
+        this.numTuples = 0;
     }
 
     /**
@@ -99,6 +101,7 @@ public class SeqScan implements OpIterator {
     public void open() throws DbException, TransactionAbortedException {
         this.opened = true;
         this.iterator.open();
+        this.numTuples = 0;
     }
     
     /**
@@ -139,16 +142,27 @@ public class SeqScan implements OpIterator {
             TransactionAbortedException, DbException {
         Tuple nextTuple = iterator.next();
         nextTuple.resetTupleDesc(this.getTupleDesc());
+        this.numTuples++;
         return nextTuple;
     }
 
     public void close() {
         this.opened = false;
+
         this.iterator.close();
     }
 
     public void rewind() throws DbException, NoSuchElementException,
             TransactionAbortedException {
+        this.numTuples = 0;
         this.iterator.rewind();
+    }
+
+    public int totalTuples(){
+        return this.numTuples;
+    }
+
+    public int numTuples() {
+        return this.totalTuples();
     }
 }

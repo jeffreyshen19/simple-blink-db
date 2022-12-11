@@ -23,6 +23,8 @@ public class Delete extends Operator {
     private TransactionId t;
     private OpIterator child;
     private boolean deleted = false; // keep track of whether operator has been called
+    private int numTuples;
+    private int totalTuples;
 
     /**
      * Constructor specifying the transaction that this delete belongs to as
@@ -34,6 +36,8 @@ public class Delete extends Operator {
     public Delete(TransactionId t, OpIterator child) {
         this.t = t;
         this.child = child;
+        this.totalTuples = child.totalTuples();
+        this.numTuples = child.numTuples();
     }
 
     public TupleDesc getTupleDesc() {
@@ -43,6 +47,7 @@ public class Delete extends Operator {
     public void open() throws DbException, TransactionAbortedException {
         super.open();
         child.open();
+        this.numTuples = child.numTuples();
     }
 
     public void close() {
@@ -53,6 +58,7 @@ public class Delete extends Operator {
     public void rewind() throws DbException, TransactionAbortedException {
         child.rewind();
         deleted = false;
+        this.numTuples = child.numTuples();
     }
 
     /**
@@ -82,6 +88,7 @@ public class Delete extends Operator {
         
         Tuple result = new Tuple(getTupleDesc());
         result.setField(0, new IntField(numDeleted));
+        this.numTuples--;
         return result;
     }
 
@@ -95,4 +102,12 @@ public class Delete extends Operator {
         child = children[0];
     }
 
+    @Override
+    public int totalTuples() {
+        return this.totalTuples;
+    }
+    @Override
+    public int numTuples() {
+        return this.numTuples;
+    }
 }
