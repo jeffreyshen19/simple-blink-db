@@ -55,6 +55,7 @@ public class Filter extends Operator {
     public void rewind() throws DbException, TransactionAbortedException {
         this.child.rewind();
         this.numTuples = 0;
+        this.totalTuples = child.totalTuples();
     }
 
     /**
@@ -88,5 +89,12 @@ public class Filter extends Operator {
     public void setChildren(OpIterator[] children) {
         this.child = children[0];
     }
-
+    @Override
+    public int totalTuples() {
+        return this.totalTuples;
+    }
+    @Override
+    public int numTuples() {
+        return this.numTuples;
+    }
 }

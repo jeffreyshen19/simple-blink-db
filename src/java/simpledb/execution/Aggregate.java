@@ -151,6 +151,7 @@ public class Aggregate extends Operator {
         this.aggregateIterator.rewind();
         this.totalTuples = child.totalTuples();
         this.numTuples = child.numTuples();
+        this.child.rewind();
     }
 
     /**
