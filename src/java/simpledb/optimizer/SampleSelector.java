@@ -218,6 +218,7 @@ public class SampleSelector {
         Aggregate aggregate = (Aggregate) newQuery;
         aggregate.open();
 
+
         // uses statistics from Table 2 in the BlinkDB paper
         double sampleVariance = aggregate.getSampleVariance();
         double selectednTups = aggregate.getNumTups();
@@ -238,13 +239,19 @@ public class SampleSelector {
                 variance = 0; // should be unreachable
 
         }
-        double sd = Math.sqrt(variance);
+        while (aggregate.hasNext()) {
+        	System.out.println("Result: " + aggregate.next() + " sample size : "+ sampleSize);
+        }
         aggregate.close();
-
-        // standard error = sd / sqrt(n)
-        double error =  sd / Math.sqrt(selectednTups);
-        System.out.println("error: " + error + "sd" + sd);
-        return (int) Math.min(Math.ceil(Math.pow(sd / errorTarget, 2)), tableSize);
+//         c * 1/n = variance 
+        System.out.println("variance" + Math.sqrt(variance));
+        double constant = selectednTups * variance;
+        return (int) Math.min(Math.ceil(constant / variance), tableSize); 
+//
+//        // standard error = sd / sqrt(n)
+//        double error =  sd / Math.sqrt(selectednTups);
+//        System.out.println("error: " + error + "sd" + sd);
+//        return (int) Math.min(Math.ceil(Math.pow(sd / errorTarget, 2)), tableSize);
     }
     
     /**
@@ -268,8 +275,6 @@ public class SampleSelector {
         // uses statistics from Table 2 in the BlinkDB paper
         double sampleVariance = aggregate.getSampleVariance();
         double selectednTups = aggregate.getNumTups();
-        System.out.println("Sample variance: " + sampleVariance + "sample sd " + Math.sqrt(sampleVariance));
-        System.out.println("num tups: " + aggregate.numTuples() + " total tups: " + aggregate.totalTuples());
         System.out.println("selected ntups: " + selectednTups + " sample size: " + sampleSize);
         double variance, c;
         switch (aggregate.aggregateOp()) {
@@ -288,13 +293,15 @@ public class SampleSelector {
                 variance = 0; // should be unreachable
 
         }
-        double sd = Math.sqrt(variance);
+        while (aggregate.hasNext()) {
+        	System.out.println("Result: " + aggregate.next() + " sample size : "+ sampleSize);
+        }
         aggregate.close();
-
-        // standard error = sd / sqrt(n)
-        double error =  sd / Math.sqrt(selectednTups);
-        System.out.println("Actual error: " + error);
-        return error;
+        
+//      c * 1/n = variance 
+	    System.out.println("variance" + Math.sqrt(variance));
+//	    double constant = selectednTups * variance;
+	    return variance; 
     }
 
     /**
