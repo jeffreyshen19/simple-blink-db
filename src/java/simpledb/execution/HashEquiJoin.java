@@ -95,6 +95,7 @@ public class HashEquiJoin extends Operator {
         child1.rewind();
         child2.rewind();
         this.numTuples = 0;
+        this.totalTuples = child1.totalTuples() + child2.totalTuples();
     }
 
     transient Iterator<Tuple> listIt = null;

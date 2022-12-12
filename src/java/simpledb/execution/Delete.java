@@ -59,6 +59,7 @@ public class Delete extends Operator {
         child.rewind();
         deleted = false;
         this.numTuples = child.numTuples();
+        this.totalTuples = child.totalTuples();
     }
 
     /**

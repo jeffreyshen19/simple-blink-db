@@ -57,7 +57,10 @@ public class SampleAggregate extends Operator {
     public void rewind() throws DbException, TransactionAbortedException {
         this.close();
         this.open();
+        this.numTuples = child.numTuples();
+        this.totalTuples = child.totalTuples();
     }
+
 
     @Override
     protected Tuple fetchNext() throws DbException, TransactionAbortedException {
