@@ -86,6 +86,7 @@ public class SampleSelector {
 
                 double ratio = numTuples/((double) totalQueryTuples);
                 tableidToRatio.put(tableid, ratio);
+                sampleQuery.rewind();
             }
         }
 

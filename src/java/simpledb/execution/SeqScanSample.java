@@ -75,6 +75,7 @@ public class SeqScanSample implements OpIterator {
     @Override
     public void rewind() throws DbException, TransactionAbortedException {
         this.iterator.rewind();
+        this.numTuples = 0;
         
     }
 

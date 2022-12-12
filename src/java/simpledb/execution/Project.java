@@ -68,6 +68,8 @@ public class Project extends Operator {
 
     public void rewind() throws DbException, TransactionAbortedException {
         child.rewind();
+        this.numTuples = child.numTuples();
+        this.totalTuples = child.totalTuples();
     }
 
     /**

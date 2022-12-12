@@ -85,6 +85,8 @@ public class Join extends Operator {
         this.t1 = null;
         this.child1.rewind();
         this.child2.rewind();
+        this.totalTuples = child1.totalTuples() + child2.totalTuples();
+        this.numTuples = child1.numTuples() + child2.numTuples();
     }
 
     /**

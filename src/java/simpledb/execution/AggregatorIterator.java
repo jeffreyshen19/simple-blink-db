@@ -114,6 +114,7 @@ public class AggregatorIterator implements OpIterator{
     public void rewind() throws DbException, TransactionAbortedException{
         if(!this.opened) throw new IllegalStateException();
         mapIterator = groups.keySet().iterator();
+        
     }
 
     public TupleDesc getTupleDesc() {

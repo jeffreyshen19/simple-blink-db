@@ -65,6 +65,8 @@ public class Insert extends Operator {
     public void rewind() throws DbException, TransactionAbortedException {
         child.rewind();
         inserted = false;
+        this.totalTuples = child.totalTuples();
+        this.numTuples = child.numTuples();
     }
 
     /**
