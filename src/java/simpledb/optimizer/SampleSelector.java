@@ -174,7 +174,7 @@ public class SampleSelector {
             return operator;
         }
         else { // Replace SeqScan
-            return new SeqScanSample(null, sampleFamily, n);
+            return new SeqScanSample(new TransactionId(), sampleFamily, n);
         }        
     }
 
