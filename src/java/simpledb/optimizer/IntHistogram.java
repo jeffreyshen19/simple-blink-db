@@ -75,7 +75,7 @@ public class IntHistogram {
 
         this.mean = sum / ntups;
         this.sd = Math.sqrt((squaredSum - Math.pow(mean, 2)) / ntups);
-        this.skew = (cubedSum - 3 * mean * Math.pow(sd, 2) - Math.pow(mean, 3)) / Math.pow(sd, 3);
+        this.skew = (cubedSum - 3 * mean * squaredSum + 2 * Math.pow(mean, 3)) / (ntups * Math.pow(sd, 3));
     }
 
     /**

@@ -119,6 +119,22 @@ public class IntHistogramTest {
 	}
 	
 	/**
+	 * Make sure that LESS_THAN binning does something reasonable.
+	 */
+	@Test public void opSkewTest() {
+		IntHistogram h = new IntHistogram(10, 1, 10);
+		
+		// Set some values
+		h.addValue(3);
+		h.addValue(3);
+		h.addValue(3);
+		h.addValue(1);
+		h.addValue(10);
+		
+		Assert.assertTrue(h.getSkew() < 0);
+	}
+	
+	/**
 	 * Make sure that GREATER_THAN_OR_EQ binning does something reasonable.
 	 */
 	@Test public void opGreaterThanOrEqualsTest() {
