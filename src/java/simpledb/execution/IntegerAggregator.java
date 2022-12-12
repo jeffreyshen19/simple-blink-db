@@ -63,16 +63,6 @@ public class IntegerAggregator implements Aggregator {
         
         if(gbfieldtype == Type.INT_TYPE) {
             fieldValue = ((IntField) tup.getField(gbfield)).getValue();
-            double val = (double) ((Integer) fieldValue).intValue();
-            // calculate mean and variance if the field type is INT
-            if (this.nTups < 1) {
-                this.mean = val;
-                this.variance = 0;
-            } else {
-                double newMean = this.mean + (val - this.mean) / this.nTups;
-                this.variance = this.variance + (val - this.mean) * (val - newMean);
-                this.mean = newMean;
-            }
         }
         else if(gbfieldtype == Type.STRING_TYPE) fieldValue = ((StringField) tup.getField(gbfield)).getValue();
         else fieldValue = null; // No grouping
@@ -82,6 +72,19 @@ public class IntegerAggregator implements Aggregator {
         }
         
         groups.get(fieldValue).add(tup);
+        
+        int aVal = ((IntField) tup.getField(afield)).getValue();
+        double val = (double) ((Integer) aVal).intValue();
+        // calculate mean and variance if the field type is INT
+        if (this.nTups < 1) {
+            this.mean = val;
+            this.variance = 0;
+        } else {
+            double newMean = this.mean + (val - this.mean) / this.nTups;
+            this.variance = this.variance + (val - this.mean) * (val - newMean);
+            this.mean = newMean;
+        }
+        
         this.nTups++;
     }
 

@@ -117,6 +117,24 @@ public class SampleTest {
         
         return queries;
     }
+
+    /**
+     * Test Error
+    */
+    @Test 
+    public void testErrorSelection() throws Exception{
+        TransactionId tid = new TransactionId();
+        OpIterator seqscan = new SeqScan(tid, hf.getId(), "");
+        // SELECT COUNT/AVG/SUM(quantity) FROM table WHERE quantity < 50
+        Predicate p = new Predicate(1, Predicate.Op.LESS_THAN, new IntField(50));
+        OpIterator filter = new Filter(p, seqscan);
+        OpIterator query = new Aggregate(filter, 1, -1, Aggregator.Op.COUNT);
+        
+        int n = SampleSelector.selectSampleSizeError(sf.getId(), sampleSizes.get(0), 5000000,  query, 0.95);
+        System.out.println("selected n:" + n);
+        double actualError = SampleSelector.calculateError(sf.getId(), n, 5000000, query);
+        
+    }
     
     /**
      * Test Latency

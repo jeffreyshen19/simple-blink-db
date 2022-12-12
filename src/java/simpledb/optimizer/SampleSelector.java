@@ -242,7 +242,59 @@ public class SampleSelector {
         aggregate.close();
 
         // standard error = sd / sqrt(n)
-        return (int) Math.ceil(Math.pow(sd / errorTarget, 2));
+        double error =  sd / Math.sqrt(selectednTups);
+        System.out.println("error: " + error + "sd" + sd);
+        return (int) Math.min(Math.ceil(Math.pow(sd / errorTarget, 2)), tableSize);
+    }
+    
+    /**
+     * Calculate error of query ran on sampleFamily
+     *
+     * @param sampleFamily       the tableid of the sample family
+     * @param sampleSize         the smallest sample size present in the sample family
+     * @param tableSize          the number of tuples in the actual table
+     * @param query              Query to execute
+     * @return n, the number of rows to read from the sample
+     * @throws TransactionAbortedException
+     * @throws DbException
+     */
+    public static double calculateError(int sampleFamily, int sampleSize, int tableSize, OpIterator query) throws DbException, TransactionAbortedException {
+        OpIterator newQuery = modifyOperatorSampleFamily(sampleFamily, query, sampleSize);
+
+        // assuming that the top level is an aggregate here
+        Aggregate aggregate = (Aggregate) newQuery;
+        aggregate.open();
+
+        // uses statistics from Table 2 in the BlinkDB paper
+        double sampleVariance = aggregate.getSampleVariance();
+        double selectednTups = aggregate.getNumTups();
+        System.out.println("Sample variance: " + sampleVariance + "sample sd " + Math.sqrt(sampleVariance));
+        System.out.println("num tups: " + aggregate.numTuples() + " total tups: " + aggregate.totalTuples());
+        System.out.println("selected ntups: " + selectednTups + " sample size: " + sampleSize);
+        double variance, c;
+        switch (aggregate.aggregateOp()) {
+            case AVG:
+                variance = sampleVariance / selectednTups;
+                break;
+            case COUNT:
+                c = selectednTups / sampleSize;
+                variance = Math.pow(sampleSize, 2) / selectednTups * c * (1 - c);
+                break;
+            case SUM:
+                c = selectednTups / sampleSize;
+                variance = Math.pow(sampleSize, 2) * (sampleVariance / selectednTups) * c * (1 - c);
+                break;
+            default:
+                variance = 0; // should be unreachable
+
+        }
+        double sd = Math.sqrt(variance);
+        aggregate.close();
+
+        // standard error = sd / sqrt(n)
+        double error =  sd / Math.sqrt(selectednTups);
+        System.out.println("Actual error: " + error);
+        return error;
     }
 
     /**
