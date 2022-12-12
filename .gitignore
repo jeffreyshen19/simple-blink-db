@@ -1,3 +1,4 @@
 /.metadata/
-test_dataset_*.txt
 test_dataset_*.dat
+test_dataset_*.txt
+latency-evaluation.csv

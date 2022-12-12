@@ -172,15 +172,10 @@ public class SampleSelector {
             }
             operator.setChildren(newChildren);
             return operator;
-<<<<<<< HEAD
         }
         else { // Replace SeqScan
-            return new SeqScanSample(((SeqScan) query).getTransactionId(), sampleFamily, n);
-=======
-        } else { // Replace SeqScan
             return new SeqScanSample(null, sampleFamily, n);
->>>>>>> 34be7b4588dd9fa350f916bf1b8922e242bd5dab
-        }
+        }        
     }
 
     /**
@@ -261,23 +256,13 @@ public class SampleSelector {
      * @return n, the number of rows to read from the sample
      * @throws IOException
      */
-<<<<<<< HEAD
+
     public static int selectSampleSizeLatency(int sampleFamily, List<Integer> sampleSizes, OpIterator query, int latencyTarget) throws IOException {
         // Run two queries on small samples (size n_1 and n_2), and calculate respective latencies (y_1, y_2)
         // Solve linear equation to relate sample size n to latency y
         final int n1 = 10000;
-        final int n2 = 20000;
+        final int n2 = 30000;
         Database.getBufferPool().clearBufferPool();
-=======
-    public static int selectSampleSizeLatency(int sampleFamily, List<Integer> sampleSizes, OpIterator query,
-            int latencyTarget) {
-        // Run two queries on small samples (size n_1 and n_2), and calculate respective
-        // latencies (y_1, y_2)
-        // Solve linear equation to relate sample size n to latency y
-        final int n1 = sampleSizes.get(0);
-        final int n2 = sampleSizes.get(1);
-        final int y1 = timeQueryOnSample(sampleFamily, query, n1);
->>>>>>> 34be7b4588dd9fa350f916bf1b8922e242bd5dab
         final int y2 = timeQueryOnSample(sampleFamily, query, n2);
         Database.getBufferPool().clearBufferPool();
         final int y1 = timeQueryOnSample(sampleFamily, query, n1);

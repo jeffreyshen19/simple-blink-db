@@ -63,7 +63,7 @@ public class IntegerAggregator implements Aggregator {
         
         if(gbfieldtype == Type.INT_TYPE) {
             fieldValue = ((IntField) tup.getField(gbfield)).getValue();
-            double val = (double) fieldValue;
+            double val = (double) ((Integer) fieldValue).intValue();
             // calculate mean and variance if the field type is INT
             if (this.nTups < 1) {
                 this.mean = val;
