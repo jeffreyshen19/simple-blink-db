@@ -37,6 +37,7 @@ public class SampleTest {
 
     private HeapFile hf;
     private SampleDBFile sf;
+    private SampleDBFile stratifiedsf;
     private TransactionId tid;
     private List<Integer> sampleSizes;
     private List<OpIterator> queries;
@@ -60,11 +61,22 @@ public class SampleTest {
         sampleSizes = Arrays.asList(10000, 50000, 100000, 1000000);
         File f = new File("sample.dat");
         sf = new SampleDBFile(f, sampleSizes, null, this.td);
-        Database.getCatalog().addTable(sf, "sample-table", "", true);
+        Database.getCatalog().addTable(sf, "sample-table-uniform", "", true);
         
         // Populate sample table (if it hasn't already been populated)
         if(!f.exists()) {
             sf.createUniformSamples(this.hf);
+            Database.getBufferPool().flushAllPages();
+        }
+
+        File stratifiedf = new File("sample-stratified.dat");
+        QueryColumnSet yearQueryColumnSet = new QueryColumnSet(2); // 2 is year
+        stratifiedsf = new SampleDBFile(stratifiedf, sampleSizes, null, this.td);
+        Database.getCatalog().addTable(stratifiedsf, "sample-table-stratified", "", true);
+        
+        // Populate sample table (if it hasn't already been populated)
+        if(!stratifiedf.exists()) {
+            stratifiedsf.createStratifiedSamples(this.hf);
             Database.getBufferPool().flushAllPages();
         }
         
@@ -157,6 +169,31 @@ public class SampleTest {
         assertTrue(stratifiedSamples.contains(new QueryColumnSet(2)));
     }   
     
+    @Test
+    public void testSampleSelection() throws Exception {
+        TransactionId tid = new TransactionId();
+        OpIterator seqscan = new SeqScan(tid, hf.getId(), "");
+
+        // SELECT AVG(quantity) FROM table WHERE quantity < 50
+        Predicate p = new Predicate(1, Predicate.Op.LESS_THAN, new IntField(50));
+        OpIterator filter = new Filter(p, seqscan);
+        OpIterator query = new Aggregate(filter, 1, -1, Aggregator.Op.AVG);
+        QueryColumnSet queryColumnSet = new QueryColumnSet(query);
+        //query qcs in stratified samples
+        int sampleIndex = SampleSelector.selectSample(queryColumnSet,query);
+        assertEquals(Database.getCatalog().getTableId("sample-table-stratified"), sampleIndex);
+
+        // SELECT COUNT(year) FROM table WHERE year >=2013
+        p = new Predicate(1, Predicate.Op.GREATER_THAN_OR_EQ, new IntField(2013));
+        filter = new Filter(p, seqscan);
+        query = new Aggregate(filter, 1, -1, Aggregator.Op.COUNT);
+        queryColumnSet = new QueryColumnSet(query);
+        //qcs not in stratified samples
+        sampleIndex = SampleSelector.selectSample(queryColumnSet,query);
+        assertEquals(Database.getCatalog().getTableId("sample-table-uniform"), sampleIndex);
+
+    }
+
     /**
      * Test Error
     */
@@ -223,6 +260,36 @@ public class SampleTest {
         outputfile.write(result);
         outputfile.close();
         
+    }
+
+    public void evaluateErrorVsTime() throws Exception {
+        FileWriter outputfile = new FileWriter("error-vs-time-evaluation.csv");
+        String result = "";
+        
+        for (double errorTarget = 1.0; errorTarget <= 32.0; errorTarget *= 2.0) {
+            result += errorTarget;
+
+            for(int i = 0; i < queries.size(); i++) {
+                OpIterator query = queries.get(i); 
+                QueryColumnSet queryColumnSet = new QueryColumnSet(query);
+
+                int sampleIndex = SampleSelector.selectSample(queryColumnSet, query);
+                SampleDBFile sample = Database.getCatalog().getSampleDBFile(sampleIndex);
+                int sampleSmallestSize = sample.getSampleSizes().get(0);
+                int sampleTDSize = sample.getTupleDesc().getSize();
+
+                int n = SampleSelector.selectSampleSizeError(sampleIndex, sampleSmallestSize, sampleTDSize, query, errorTarget);
+                Database.getBufferPool().clearBufferPool();
+                int actualTime = SampleSelector.timeQueryOnSample(sampleIndex, query, n);
+                double actualError = SampleSelector.calculateError(sampleIndex, sampleSmallestSize, sampleTDSize, query);
+                result += "," + actualTime;
+                result += "," + actualError;
+            }
+            result += "\n";
+        }
+        outputfile.write(result);
+        outputfile.close();
+
     }
      
     

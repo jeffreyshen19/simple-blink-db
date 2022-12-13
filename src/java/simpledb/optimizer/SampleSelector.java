@@ -35,7 +35,7 @@ public class SampleSelector {
      * @param qcs
      * @return the tableid of a sample in the catalog
      */
-    public int selectSample(QueryColumnSet qcs, OpIterator query) throws DbException, TransactionAbortedException{
+    public static int selectSample(QueryColumnSet qcs, OpIterator query) throws DbException, TransactionAbortedException{
         Catalog catalog = Database.getCatalog();
 
         int minValidTableID = -1;
