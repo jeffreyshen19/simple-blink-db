@@ -147,7 +147,7 @@ public class SampleTest {
         Database.getCatalog().addTable(sf, "sample-table", "", true);
 
         // Populate sample table
-        sf.createStratifiedSamples(test_hf, 3);
+        sf.createStratifiedSamples(test_hf);
 
         // Iterate through sample to ensure it was generated correctly
         DbFileIterator iterator = sf.iterator(null);

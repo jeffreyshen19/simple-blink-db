@@ -71,17 +71,10 @@ public class SampleDBFile extends HeapFile{
         }
     }
 
-    public void createStratifiedSamples(DbFile origFile, int cap) throws DbException, IOException, TransactionAbortedException {
+    public void createStratifiedSamples(DbFile origFile) throws DbException, IOException, TransactionAbortedException {
 
     	// get indices of the stratified columns 	
-        List<Integer> colIndices = new ArrayList<>();
-    	Set<String> colNames = this.stratifiedColumns.getColumns();
-    	for (int i = 0; i < this.td.numFields(); i++) {
-    		if (colNames.contains(this.td.getFieldName(i))) {
-    			colIndices.add(i);
-    		}
-    	}
-        assert colIndices.size() == this.stratifiedColumns.getNumCols(); // double check 
+        Set<Integer> colIndices = this.stratifiedColumns.getColumns();
 
         // Sample maxSize integers from origFile using reservoir sampling (O(n))
     	int maxSize = sampleSizes.get(sampleSizes.size() - 1); // maxSize is the size of the *largest* sample
@@ -92,7 +85,22 @@ public class SampleDBFile extends HeapFile{
         iterator.open();
         
         int i = 0;
+        int currSampleI = 0;
+        int currSize = sampleSizes.get(currSampleI);
+        int currCap = currSize / 6; // hardcoded with 6 at the moment 
+        
         while(iterator.hasNext()) {
+        	if (i == currSize) {
+        		if (currSampleI < sampleSizes.size() - 1) {
+        			currSampleI++;
+            		currSize = sampleSizes.get(currSampleI);
+            		currCap = currSize / 6;
+        		}
+        		else {
+        			currCap = Integer.MAX_VALUE;
+        		}
+        	}
+        	
             Tuple tuple = iterator.next();
         	StringBuilder currStratColVal = new StringBuilder(); // current stratified columns' value
         	
@@ -101,7 +109,7 @@ public class SampleDBFile extends HeapFile{
             	currStratColVal.append(tuple.getField(index).toString());
             }
             
-            if (columnValCount.containsKey(currStratColVal.toString()) && columnValCount.get(currStratColVal.toString()) == cap) {
+            if (columnValCount.containsKey(currStratColVal.toString()) && columnValCount.get(currStratColVal.toString()) == currCap) {
             	continue;
             }
             
