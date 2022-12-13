@@ -158,7 +158,7 @@ public class SampleDBFile extends HeapFile{
     }
 
     public boolean isStratified() {
-        return this.stratifiedColumns == null;
+        return this.stratifiedColumns != null;
     }
 
     // this iterator should not get called- is only here to not throw errors

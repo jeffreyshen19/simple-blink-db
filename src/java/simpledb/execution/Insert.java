@@ -120,6 +120,6 @@ public class Insert extends Operator {
     }
     @Override
     public int numTuples() {
-        return this.numTuples;
+        return this.child.numTuples();
     }
 }

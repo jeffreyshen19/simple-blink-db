@@ -178,7 +178,7 @@ public class HashEquiJoin extends Operator {
 
     @Override
     public int totalTuples() {
-        return this.totalTuples;
+        return this.child1.totalTuples() + this.child2.totalTuples();
     }
     @Override
     public int numTuples() {

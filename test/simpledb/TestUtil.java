@@ -299,6 +299,14 @@ public class TestUtil {
             cur++;
             return tup;
 		}
+		
+		public int numTuples() {
+		    return 0;
+		}
+		
+		public int totalTuples() {
+		    return 0;
+		}
     }
 
     /**

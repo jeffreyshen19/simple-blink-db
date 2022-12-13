@@ -104,11 +104,11 @@ public class OrderBy extends Operator {
     }
     @Override
     public int totalTuples() {
-        return this.totalTuples;
+        return this.child.totalTuples();
     }
     @Override
     public int numTuples() {
-        return this.numTuples;
+        return this.child.numTuples();
     }
 
 }

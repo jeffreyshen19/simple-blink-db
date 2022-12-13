@@ -49,8 +49,10 @@ public class SampleSelector {
                 if (!sample.isStratified()) continue;
 
                 QueryColumnSet sampleQCS = sample.getStratifiedColumnSet();
+
                 //get the smallest sample that fully contains it
-                if (sampleQCS.getColumns().contains(qcs.getColumns()) &&
+                if ((sampleQCS.getColumns().contains(qcs.getColumns()) ||
+                    sampleQCS.getColumns().equals(qcs.getColumns())) &&
                     sample.getSampleSizes().get(0) < minValidSampleSize) {
                         minValidSampleSize = sample.getSampleSizes().get(0);
                         minValidTableID = tableid;
@@ -71,7 +73,6 @@ public class SampleSelector {
                 SampleDBFile sample = (SampleDBFile) catalog.getDatabaseFile(tableid);
                 //get number of tuples in smallest sample in sampleFamily
                 int totalTuples = sample.getSampleSizes().get(0);
-                //int matchTuples = 0;
 
                 OpIterator sampleQuery = modifyOperatorSampleFamily(tableid, query, totalTuples);
                 // modify remove agg
@@ -79,14 +80,13 @@ public class SampleSelector {
                 //OpIterator noAggQuery = modifyOperatorRemoveAgg(sampleQuery);
 
 
-                sampleQuery.open();
-                runOperator(sampleQuery);
+                runOperatorNoClose(sampleQuery);
                 int totalQueryTuples = sampleQuery.totalTuples();
                 int numTuples = sampleQuery.numTuples();
 
                 double ratio = numTuples/((double) totalQueryTuples);
                 tableidToRatio.put(tableid, ratio);
-                sampleQuery.rewind();
+                sampleQuery.close();
             }
         }
 
@@ -98,6 +98,24 @@ public class SampleSelector {
 
 
         throw new DbException("Should not have reached here");
+    }
+    
+    /**
+     * Runs an operator until completion
+     *
+     * @param query
+     */
+    private static void runOperatorNoClose(OpIterator query) {
+        try {
+            query.open();
+            int i = 0;
+            while (query.hasNext()) {
+                query.next();
+                i++;
+            }
+        } catch (DbException | TransactionAbortedException e) {
+            e.printStackTrace();
+        }
     }
 
     /**

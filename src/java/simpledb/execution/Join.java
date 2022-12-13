@@ -155,11 +155,11 @@ public class Join extends Operator {
 
     @Override
     public int totalTuples() {
-        return this.totalTuples;
+        return child1.totalTuples() + child2.totalTuples();
     }
     @Override
     public int numTuples() {
-        return this.numTuples;
+        return this.child1.numTuples() + child2.numTuples();
     }
 
 }
