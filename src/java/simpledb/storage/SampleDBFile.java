@@ -75,7 +75,7 @@ public class SampleDBFile extends HeapFile{
 
     	// get indices of the stratified columns 	
         List<Integer> colIndices = new ArrayList<>();
-    	Set<String> colNames = this.stratifiedColumns.getColumns();
+    	Set<Integer> colNames = this.stratifiedColumns.getColumns();
     	for (int i = 0; i < this.td.numFields(); i++) {
     		if (colNames.contains(this.td.getFieldName(i))) {
     			colIndices.add(i);
