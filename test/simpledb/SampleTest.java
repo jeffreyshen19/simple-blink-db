@@ -46,7 +46,7 @@ public class SampleTest {
         String names[] = new String[]{"id", "quantity"};
         this.td = new TupleDesc(types, names);
         
-        hf = new HeapFile(new File("test_uniform_dataset_5000000.dat"), td);
+        hf = new HeapFile(new File("test_dataset_5M.dat"), td);
         Database.getCatalog().addTable(hf, "t1");
         
     }
@@ -80,7 +80,7 @@ public class SampleTest {
             assertTrue(scan.hasNext());
             scan.next();
         }
-        assertFalse("There should be no more samples", !scan.hasNext());
+        assertFalse("There should be no more samples", scan.hasNext());
         scan.close();
         Database.getBufferPool().transactionComplete(tid);
     }

@@ -1,4 +1,6 @@
 /.metadata/
-test_dataset_*.dat
 test_dataset_*.txt
 latency-evaluation.csv
+test_dataset_50M.dat
+test_dataset_10M.dat
+test_small_skewed_dataset.dat
