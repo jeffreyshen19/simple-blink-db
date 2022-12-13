@@ -1,5 +1,8 @@
 package simpledb.optimizer;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import simpledb.execution.Predicate;
 
 /**
@@ -157,5 +160,16 @@ public class IntHistogram {
         }
         
         return result;
+    }
+    
+    /**
+     * return all non-empty buckets in this IntHistogram
+     */
+    public List<Integer> getFilledBuckets() {
+    	ArrayList<Integer> result = new ArrayList<Integer>();
+    	for (int i = 0; i < bucketArr.length; i++) {
+    		if (bucketArr[i] > 0) result.add(bucketArr[i]);
+    	}
+    	return result;
     }
 }

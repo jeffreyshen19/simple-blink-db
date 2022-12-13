@@ -71,7 +71,7 @@ public class SampleTest {
 
         File stratifiedf = new File("sample-stratified.dat");
         QueryColumnSet yearQueryColumnSet = new QueryColumnSet(2); // 2 is year
-        stratifiedsf = new SampleDBFile(stratifiedf, sampleSizes, null, this.td);
+        stratifiedsf = new SampleDBFile(stratifiedf, sampleSizes, yearQueryColumnSet, this.td);
         Database.getCatalog().addTable(stratifiedsf, "sample-table-stratified", "", true);
         
         // Populate sample table (if it hasn't already been populated)

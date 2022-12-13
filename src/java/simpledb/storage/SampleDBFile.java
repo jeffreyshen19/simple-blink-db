@@ -3,6 +3,8 @@ package simpledb.storage;
 import simpledb.common.Database;
 import simpledb.common.DbException;
 import simpledb.optimizer.QueryColumnSet;
+import simpledb.optimizer.SampleCreator;
+import simpledb.optimizer.TableStats;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
@@ -72,7 +74,8 @@ public class SampleDBFile extends HeapFile{
     }
 
     public void createStratifiedSamples(DbFile origFile) throws DbException, IOException, TransactionAbortedException {
-
+    	TableStats tableStats = new TableStats(origFile.getId(), SampleCreator.IO_COST); 
+    	
     	// get indices of the stratified columns 	
         Set<Integer> colIndices = this.stratifiedColumns.getColumns();
 
@@ -87,14 +90,14 @@ public class SampleDBFile extends HeapFile{
         int i = 0;
         int currSampleI = 0;
         int currSize = sampleSizes.get(currSampleI);
-        int currCap = currSize / 6; // hardcoded with 6 at the moment 
+        int currCap = Math.max(1, currSize / 6); // hardcoded with 6 at the moment 
         
         while(iterator.hasNext()) {
         	if (i == currSize) {
         		if (currSampleI < sampleSizes.size() - 1) {
         			currSampleI++;
             		currSize = sampleSizes.get(currSampleI);
-            		currCap = currSize / 6;
+            		currCap = Math.max(1, currSize / 3);
         		}
         		else {
         			currCap = Integer.MAX_VALUE;
@@ -118,22 +121,31 @@ public class SampleDBFile extends HeapFile{
             
             
             if(i < maxSize) reservoir.set(i, tuple);
-            else {
-                int j = ThreadLocalRandom.current().nextInt(0, i + 1); // random integer in range [0, i]
-                if(j < maxSize) reservoir.set(j, tuple);
-            }      
+            else if (sampleSizes.size() > 1){ // only randomly replace tuples in the larger sample to make sure that the smaller ones are distributed properly
+                int j = ThreadLocalRandom.current().nextInt(0, i + 1); 
+                if(sampleSizes.get(sampleSizes.size() - 2) <= j  && j < maxSize) reservoir.set(j, tuple);
+            }         
             
             i++;
         }
              
-        iterator.close();      
+        iterator.rewind();      
+        
+        // fills the sample in case we did not fill the samples due to cap
+        for (i = 0; i < reservoir.size(); i++) {
+        	if (reservoir.get(i) == null) {
+        		reservoir.set(i, iterator.next());
+        	}
+        }
+        
+        iterator.close();
         
         // Write the tuples to disk
         Collections.shuffle(reservoir);
         
         for(i = 0; i < maxSize; i++) {
             Tuple tuple = reservoir.get(i);
-            insertTuple(tid, tuple);
+            Database.getBufferPool().insertTuple(tid, this.getId(), tuple);
         }
     }
 

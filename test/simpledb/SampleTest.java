@@ -160,7 +160,7 @@ public class SampleTest {
             int quantity = ((IntField) tuple.getField(1)).getValue();
             quantityCount.putIfAbsent(quantity, 0);
             quantityCount.put(quantity, quantityCount.get(quantity) + 1);
-            counter++; 
+            counter++;
         }
         iterator.close();
         int expected = sampleSizes.get(sampleSizes.size() - 1);

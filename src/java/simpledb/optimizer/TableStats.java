@@ -12,6 +12,7 @@ import simpledb.transaction.TransactionId;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -248,5 +249,17 @@ public class TableStats {
     public double getSkewForColumn(int i) {
         return intHistograms.get(i).getSkew();
     }
-
+    
+    /**
+     * compute group counts in table for given column 
+     * 
+     * @param sampleSize 	the samplesize to use the cap on 
+     * @param i 			index of the stratified column
+     */
+    public int calculateCapForColumn(int sampleSize, int i) {
+    	IntHistogram intHist = intHistograms.get(i);
+    	List<Integer> buckets = intHist.getFilledBuckets();
+    	int numGroups = buckets.size();
+    	return (int) Math.floor(sampleSize / numGroups);
+    }
 }
