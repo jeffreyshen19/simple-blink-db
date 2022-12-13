@@ -42,7 +42,7 @@ public class QueryColumnSet {
             }
             else if(query instanceof Aggregate) { // GROUP BY / HAVING
                 Aggregate aggregate = (Aggregate) query;
-                int groupField = aggregate.aggregateField();
+                int groupField = aggregate.groupField();
                 if(groupField != Aggregator.NO_GROUPING) columns.add(groupField);
             }
             

@@ -1,13 +1,16 @@
 package simpledb.systemtest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -19,6 +22,8 @@ import simpledb.execution.Filter;
 import simpledb.execution.OpIterator;
 import simpledb.execution.Predicate;
 import simpledb.execution.SeqScan;
+import simpledb.optimizer.QueryColumnSet;
+import simpledb.optimizer.SampleCreator;
 import simpledb.optimizer.SampleSelector;
 import simpledb.storage.BufferPool;
 import simpledb.storage.HeapFile;
@@ -46,12 +51,10 @@ public class SampleTest {
         String names[] = new String[]{"id", "quantity", "year"};
         this.td = new TupleDesc(types, names);
         
-        System.out.println("starting evaluation");
+        System.out.println("** STARTING EVALUATION ** ");
         
         hf = new HeapFile(new File("test_dataset_50M.dat"), td);
         Database.getCatalog().addTable(hf, "t1");
-        
-        System.out.println("read original file");
     
         // Create sample table and add it to catalog
         sampleSizes = Arrays.asList(10000, 50000, 100000, 1000000);
@@ -65,15 +68,13 @@ public class SampleTest {
             Database.getBufferPool().flushAllPages();
         }
         
-        System.out.println("Finished generating samples");
-        
         // Add queries to query workload 
         this.queries = getQueryWorkload();
     }
     
     private List<OpIterator> getQueryWorkload(){
         List<OpIterator> queries = new ArrayList<>();
-        OpIterator seqscan = new SeqScan(null, hf.getId(), "");
+        OpIterator seqscan = new SeqScan(new TransactionId(), hf.getId(), "");
         
         // SELECT COUNT/AVG/SUM(quantity) FROM table;
         queries.add(new Aggregate(seqscan, 1, -1, Aggregator.Op.COUNT)); 
@@ -118,6 +119,44 @@ public class SampleTest {
         return queries;
     }
 
+    
+    /**
+     * Test Sample Generation
+     */
+    @Test
+    public void testQueryColumnSet() throws Exception{
+        assertEquals(new QueryColumnSet(), new QueryColumnSet(queries.get(0))); 
+        assertEquals(new QueryColumnSet(1), new QueryColumnSet(queries.get(3))); 
+        assertEquals(new QueryColumnSet(1, 2), new QueryColumnSet(queries.get(6))); 
+        assertEquals(new QueryColumnSet(2), new QueryColumnSet(queries.get(9))); 
+        assertEquals(new QueryColumnSet(2), new QueryColumnSet(queries.get(12))); 
+        assertEquals(new QueryColumnSet(1, 2), new QueryColumnSet(queries.get(15))); 
+    }
+    
+    
+    // Should select the most skewed sample if there is one option
+    @Test
+    public void testGetStratifiedSamplesToCreateOneSample() throws Exception {
+        int storageCap = 20000000; // 20MB
+        List<QueryColumnSet> stratifiedSamples = SampleCreator.getStratifiedSamplesToCreate(hf.getId(), queries, storageCap);
+        
+        // Should select year 
+        assertEquals(1, stratifiedSamples.size());
+        assertEquals(new QueryColumnSet(2), stratifiedSamples.get(0)); // should be stratified on year;
+    }
+    
+    // Should select the most skewed sample and the most common uniform sample if there are multiple options
+    @Test
+    public void testGetStratifiedSamplesToCreateTwoSamples() throws Exception {
+        int storageCap = 30000000; // 30MB
+        List<QueryColumnSet> stratifiedSamples = SampleCreator.getStratifiedSamplesToCreate(hf.getId(), queries, storageCap);
+        
+        // Should select year and quantity 
+        assertEquals(2, stratifiedSamples.size());
+        assertTrue(stratifiedSamples.contains(new QueryColumnSet(1)));
+        assertTrue(stratifiedSamples.contains(new QueryColumnSet(2)));
+    }   
+    
     /**
      * Test Error
     */

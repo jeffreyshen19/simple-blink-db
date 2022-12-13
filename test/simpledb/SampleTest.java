@@ -142,7 +142,7 @@ public class SampleTest {
         File f = File.createTempFile("sample-table", "dat");
         f.deleteOnExit();
 
-        QueryColumnSet qcs = new QueryColumnSet("quantity");
+        QueryColumnSet qcs = new QueryColumnSet(1);
         SampleDBFile sf = new SampleDBFile(f, sampleSizes, qcs, tupleDesc);
         Database.getCatalog().addTable(sf, "sample-table", "", true);
 
