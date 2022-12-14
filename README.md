@@ -1,274 +1,115 @@
-6.5830/6.5831 Labs
+SimpleBlinkDB 
 ==================
 
-Git repository for labs in [6.5830/6.5831](http://dsg.csail.mit.edu/6.5830/).
+A lightweight implementation of BlinkDB in Java.
 
-We will be using git, a source code control tool, to distribute labs in
-6.5830/6.5831. This will allow you to incrementally download the code for the
-labs, and for us to push any hot fixes that might be necessary.
+## Getting the Data 
 
-You will also be able to use git to commit and backup your progress on the labs
-as you go. Course git repositories will be hosted as a repository in GitHub, a
-website that hosts runs git servers for thousands of open source projects. In
-our case, your code will be in a private repository that is visible only to you
-and course staff.
+Because of size restrictions, some of the data files used for testing are not available in the repository. To run the existing test suite, download [test_dataset_50M.dat](https://drive.google.com/file/d/1MrO_Y6AQS7dpy6ZbPQXWdF5hPRRTeDQm/view?usp=sharing) and place it in the root directory. Additional test files can be generated using `generate_dataset.py`. 
 
-This document describes what you need to do to get started with git, and also
-download and upload 6.5830/6.5831 labs via GitHub.
 
-**If you are not a registered student at MIT, you are welcome to follow along,
-but we ask you to please keep your solution PRIVATE and not make it
-publicly available**
+## Running the Code 
 
-## Contents
+### Generating Sample Families 
 
-- [Learning Git](#learning-git)
-- [Setting up GitHub](#setting-up-github)
-- [Installing Git](#installing-git)
-- [Setting up Git](#setting-up-git)
-- [Getting Newly Released Labs](#getting-newly-released-labs)
-- [Submitting Labs](#submitting-labs)
-- [Word of Caution](#word-of-caution)
-- [Help!](#help)
+First, add the underlying base table (in this case `test_dataset_50M.dat`): 
 
-## <a name="learning-git">Learning Git</a>
+```
+// Create the TupleDesc 
+Type types[] = new Type[]{Type.INT_TYPE, Type.INT_TYPE, Type.INT_TYPE};
+String names[] = new String[]{"id", "quantity", "year"};
+TupleDesc td = new TupleDesc(types, names);
 
-There are numerous guides on using Git that are available. They range from being interactive to just text-based. Find
-one that works and experiment; making mistakes and fixing them is a great way to learn.
-Github has compiled a list of such resources
-[here][resources].
 
-If you have no experience with git, you may find
-this [Missing Semester lecture][missing-semester-version-control] helpful. And if you want to build an intuition with git commands, try this [card game][omg].
-
-## <a name="setting-up-github">Setting Up GitHub</a>
-
-Now that you have a basic understanding of Git, it's time to get started with GitHub.
-
-0. Install git. (See below for suggestions).
-
-1. If you don't already have an account, [sign up for one][join].
-
-### <a name="installing-git">Installing git</a>
-
-The instructions are tested on bash/linux environments. Installing git should be a simple `apt-get install`, `yum install`, or similar.
-
-Instructions for installing git on Linux, OSX, or Windows can be found at
-[GitBook:
-Installing][gitbook].
-
-If you are using an IDE like IntelliJ/VSCode, it likely comes with git integration. The set-up instructions below may be slightly different than the
-command line instructions listed, but will work for any OS. Detailed instructions can be found
-in
-[IntelliJ Help][intellij-help],
-[VSCode Version Control Guide][vscode-version-control],
-and/or
-[VSCode Github Guide][vscode-github].
-
-## <a name="setting-up-git">Setting Up Git</a>
-
-You should have Git installed from the previous section.
-
-1. The first thing we have to do is to clone the current lab repository by issuing the following commands on the command line:
-
-   ```bash
-    $ git clone https://github.com/MIT-DB-Class/simple-db-hw-2022.git
-   ```
-
-   Now, every time a new lab or patch is released, you can
-
-   ```bash
-    $ git pull
-   ```
-   to get the latest. 
-   
-   That's it. You can start working on the labs! That said, we strongly encourage you to use git for more than just
-   downloading the labs. In the rest of the guide we will walk you through on how to use git for version-control
-   during your own development. 
-
-2. Notice that you are cloning from our repo, which means that it will be inappropriate for you to push your code to it.
-   If you want to use git for version control, you will need to create your own repo to write your changes to. Do so 
-   by clicking 'New' on the left in github, and make sure to choose **Private** when creating, so others cannot see your
-   code! Now we are going to change the repo we just checked out to point to your personal repository.
-
-3. By default the remote called `origin` is set to the location that you cloned the repository from. You should see the following:
-
-   ```bash
-    $ git remote -v
-        origin https://github.com/MIT-DB-Class/simple-db-hw-2022.git (fetch)
-        origin https://github.com/MIT-DB-Class/simple-db-hw-2022.git (push)
-   ```
-
-   We don't want that remote to be the origin. Instead, we want to change it to point to your repository. To do that, issue the following command:
-
-   ```bash
-    $ git remote rename origin upstream
-   ```
-
-   And now you should see the following:
-
-   ```bash
-    $ git remote -v
-        upstream https://github.com/MIT-DB-Class/simple-db-hw-2022.git (fetch)
-        upstream https://github.com/MIT-DB-Class/simple-db-hw-2022.git (push)
-   ```
-
-4. Lastly we need to give your repository a new `origin` since it is lacking one. Issue the following command, substituting your athena username:
-
-   ```bash
-    $ git remote add origin https://github.com/[your-username]/[your-repo]
-   ```
-
-   If you have an error that looks like the following:
-
-   ```
-   Could not rename config section 'remote.[old name]' to 'remote.[new name]'
-   ```
-
-   Or this error:
-
-   ```
-   fatal: remote origin already exists.
-   ```
-
-   This appears to happen to some depending on the version of Git being used. To fix it, just issue the following command:
-
-   ```bash
-   $ git remote set-url origin https://github.com/[your-username]/[your-repo]
-   ```
-
-   This solution was found from [StackOverflow](http://stackoverflow.com/a/2432799) thanks to [Cassidy Williams](https://github.com/cassidoo).
-
-   For reference, your final `git remote -v` should look like following when it's setup correctly:
-
-
-   ```bash
-    $ git remote -v
-        upstream https://github.com/MIT-DB-Class/simple-db-hw-2022.git (fetch)
-        upstream https://github.com/MIT-DB-Class/simple-db-hw-2022.git (push)
-        origin https://github.com/[your-username]/[your-repo] (fetch)
-        origin https://github.com/[your-username]/[your-repo] (push)
-   ```
-
-5. Let's test it out by doing a push of your main branch to GitHub by issuing the following:
-
-   ```bash
-    $ git push -u origin main
-   ```
-
-   You should see something like the following:
-
-   ```
-   Counting objects: 59, done.
-   Delta compression using up to 4 threads.
-   Compressing objects: 100% (53/53), done.
-   Writing objects: 100% (59/59), 420.46 KiB | 0 bytes/s, done.
-   Total 59 (delta 2), reused 59 (delta 2)
-   remote: Resolving deltas: 100% (2/2), done.
-   To git@github.com:[your-repo].git
-    * [new branch]      main -> main
-   Branch main set up to track remote branch main from origin.
-   ```
-
-
-6. That last command was a bit special and only needs to be run the first time to setup the remote tracking branches.
-   Now we should be able to just run `git push` without the arguments. Try it and you should get the following:
-
-   ```bash
-    $ git push
-      Everything up-to-date
-   ```
-
-If you don't know Git that well, this probably seemed very arcane. Just keep using Git and you'll understand more and
-more. You aren't required to use commands like `commit` and `push` as you develop your labs, but will find them useful for
-debugging. We'll provide explicit instructions on how to use these commands to actually upload your final lab solution.
-
-## <a name="getting-newly-released-labs">Getting Newly Released Labs</a>
-
-(You don't need to follow these instructions until Lab 1.)
-
-Pulling in labs that are released or previous lab solutions should be easy as long as you set up your repository based
-on the instructions in the last section.
-
-1. All new lab and previous lab solutions will be posted to the [labs repository][labs-github] in the class organization.
-
-   Check it periodically as well as Piazza's announcements for updates on when the new labs are released.
-
-2. Once a lab is released, pull in the changes from your simpledb directory:
-
-   ```bash
-    $ git pull upstream main
-   ```
-
-   **OR** if you wish to be more explicit, you can `fetch` first and then `merge`:
-
-   ```bash
-    $ git fetch upstream
-    $ git merge upstream/main
-   ```
-   Now commit to your main branch:
-   ```bash
-   $ git push origin main
-   ```
-
-3. If you've followed the instructions in each lab, you should have no merge conflicts and everything should be peachy.
-
-## <a name="submitting-labs">Submitting Labs</a>
-
-<!--
-To submit your code, please create a <tt>6.830-lab1.tar.gz</tt> tarball (such
-that, untarred, it creates a <tt>6.830-lab1/src/simpledb</tt> directory with
-your code) and submit it on the [6.830 Stellar Site](https://stellar.mit.edu/S/course/6/sp13/6.830/index.html). You can use the `ant handin` target to generate the tarball.
-
-TODO: make it possible to use `ant handin` with a zip file including the lab writeup
--->
-
-We will be using Gradescope to autograde all labs. You should have all been
-invited to the class instance; if not, please check Piazza for an invite code.
-If you are still having trouble, let us know and we can help you get set up. You
-may submit your code multiple times before the deadline; we will use the latest
-version as determined by Gradescope. Place the write-up in a file called
-`labN-writeup.txt` with your submission (with `N` replaced with the relevant lab
-number).
-
-The easiest way to submit to gradescope is with `.zip` files containing your
-code. For example on Linux/macOS, you can submit lab 1 by running the following
-command:
-
-```bash
-$ zip -r submission.zip src/ lab1-writeup.txt
+// Load the file and add it to the catalog 
+HeapFile hf = new HeapFile(new File("test_dataset_50M.dat"), td);
+Database.getCatalog().addTable(hf, "t1");
 ```
 
-## <a name="word-of-caution">Word of Caution</a>
+Second, generate the uniform sample. To do this, specify how large the sample family should be. In this case, the sample family will contain 1,000,000 rows, and be segmented at 10,000 rows, 50,000 rows, and 100,000 rows. As a guiding metric, our samples are 2% of the original table's size. 
+    
+```
+// Create sample table and add it to catalog
+List<Integer> sampleSizes = Arrays.asList(10000, 50000, 100000, 1000000);
+File f = new File("uniform-sample.dat"); // This is where the sample will be stored on disk 
+SampleDBFile sf = new SampleDBFile(f, sampleSizes, null, this.td); // null refers to the fact this sample is not stratified
+Database.getCatalog().addTable(sf, "sample-table-uniform", "", true); // true tells the catalog this DbFile is stratified
 
-Git is a distributed version control system. This means everything operates
-*offline* until you run `git pull` or `git push`. This is a great feature.
+// Populate sample table (if it hasn't already been populated)
+if(!f.exists()) {
+   sf.createUniformSamples(this.hf);
+   Database.getBufferPool().flushAllPages(); // Ensure it is written to memory 
+}
+```
 
-However, one consequence of this is that you may forget to `git push` your
-changes. This is why we **strongly** suggest that you check GitHub to be sure
-that what you want to see matches up with what you expect.
+Then, we want to generate the stratified samples. To do this, we can have our system tell us what columns to stratify on, given a storage cap: 
+```
+// Queries is an array of past queries, represented as OpIterators
+List<OpIterator> queries = new ArrayList<>();
+// SELECT COUNT/AVG/SUM(quantity) FROM table;
+queries.add(new Aggregate(seqscan, 1, -1, Aggregator.Op.COUNT)); 
+queries.add(new Aggregate(seqscan, 1, -1, Aggregator.Op.AVG)); 
+queries.add(new Aggregate(seqscan, 1, -1, Aggregator.Op.SUM)); 
+// Add more queries ....
 
-## <a name="help">Help!</a>
+int storageCap = 20000000; // 20MB
+List<QueryColumnSet> stratifiedSamples = SampleCreator.getStratifiedSamplesToCreate(hf.getId(), queries, storageCap);
+```
 
-If at any point you need help with setting all this up, feel free to reach out to one of the TAs or the instructor.
-Their contact information can be found on the [course homepage](http://dsg.csail.mit.edu/6.5830/).
+The list, `stratifiedSamples` gives us the list of columns we should generate stratified samples on. Let's generate these stratified samples!
 
-[gitbook]: http://git-scm.com/book/en/Getting-Started-Installing-Git
+```
+for(int i = 0; i < stratifiedSamples.size(); i++){
+   File stratifiedf = new File("sample-stratified.dat");
+   QueryColumnSet qcs = stratifiedSamples.get(i);
+   SampleDBFile stratifiedsf = new SampleDBFile(stratifiedf, sampleSizes, qcs, td);
+   Database.getCatalog().addTable(stratifiedsf, "sample-table-stratified-" + i, "", true);
+        
+   // Populate sample table (if it hasn't already been populated)
+   if(!stratifiedf.exists()) {
+      stratifiedsf.createStratifiedSamples(hf);
+      Database.getBufferPool().flushAllPages();
+   }
+}
+```
 
-[intellij-help]: https://www.jetbrains.com/help/idea/version-control-integration.html
+Now we have all our samples and are ready to run! Sample generation can take several minutes to an hour, depending on how large the original file is. In the future, since the sample files are saved to disk, the lengthy process of sample generation will not have to be run again. 
 
-[join]: https://github.com/join
+### Executing Queries 
 
-[labs-github]: https://github.com/MIT-DB-Class/simple-db-hw-2022
+To execute a query, we first need to convert it into an `OpIterator` tree using Parser. For instance, `SELECT AVG(quantity) FROM table` will be converted into:
 
-[missing-semester-version-control]: https://missing.csail.mit.edu/2020/version-control/
+```
+OpIterator seqscan = new SeqScan(new TransactionId(), hf.getId(), ""); // hf is the table we are reading
+OpIterator query = new Aggregate(seqscan, 1, -1, Aggregator.Op.AVG); // 1 corresponds to quantity, -1 indicates no grouping;
+```
 
-[omg]: https://ohmygit.org/
+Then, our system needs to determine the correct sample family: 
 
-[resources]: https://help.github.com/articles/what-are-other-good-resources-for-learning-git-and-github
+```
+QueryColumnSet qcs = new QueryColumnSet(query);
+int tableid = SampleSelector.selectSample(qcs, query);
+```
 
-[ssh-key]: https://help.github.com/articles/generating-ssh-keys
+This outputs `tableid`, the sample family our system determines the query should execute on. Next, we determine `n`, the size of the family. If we are given an error constraint, we can use this code: 
 
-[vscode-github]: https://code.visualstudio.com/docs/editor/github
+```
+int tableSize = 50000000; // number of tuples in the actual table
+int sampleSize = sampleSizes.get(0); // the size of the small sample we want to determine error on
+double errorTarget = 1.5; // target standard deviation
+int n = SampleSelector.selectSampleSizeError(tableid, sampleSize, tableSize,  query, errorTarget);
+```
 
-[vscode-version-control]: https://code.visualstudio.com/Docs/editor/versioncontrol#_git-support
+If we are given a latency constraint, we can use this code: 
+```
+int targetTime = 50; // the latency constraint, in ms
+int n = SampleSelector.selectSampleSizeLatency(tableid, sampleSizes, query, targetTime); 
+```
+
+Now, we have the sample family `tableid` and the sample size `n`. Finally, we can run the query. 
+
+```
+OpIterator modifiedQuery = new SampleAggregate(SampleSelector.modifyOperatorSampleFamily(tableid, query, n), n, tableSize, Aggregator.Op.AVG);
+```
+
+This returns `modifiedQuery`, the OpIterator that will run over the sample and return the correct result. This can be executed using the standard `OpIterator` iteration methods. 
