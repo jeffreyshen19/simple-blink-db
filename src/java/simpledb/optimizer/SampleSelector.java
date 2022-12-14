@@ -16,11 +16,13 @@ import simpledb.execution.Aggregate;
 import simpledb.execution.OpIterator;
 import simpledb.execution.Operator;
 import simpledb.execution.Query;
+import simpledb.execution.SampleAggregate;
 import simpledb.execution.SeqScan;
 import simpledb.execution.SeqScanSample;
 import simpledb.execution.Aggregator.Op;
 import simpledb.storage.DbFile;
 import simpledb.storage.DbFileIterator;
+import simpledb.storage.IntField;
 import simpledb.storage.SampleDBFile;
 import simpledb.storage.Tuple;
 import simpledb.transaction.TransactionAbortedException;
@@ -123,7 +125,7 @@ public class SampleSelector {
      *
      * @param query
      */
-    private static void runOperator(OpIterator query) {
+    public static void runOperator(OpIterator query) {
         try {
             query.open();
             int i = 0;
@@ -258,19 +260,19 @@ public class SampleSelector {
                 variance = 0; // should be unreachable
 
         }
-        while (aggregate.hasNext()) {
-        	System.out.println("Result: " + aggregate.next() + " sample size : "+ sampleSize);
-        }
         aggregate.close();
-//         c * 1/n = variance 
-        System.out.println("variance" + Math.sqrt(variance));
-        double constant = selectednTups * variance;
-        return (int) Math.min(Math.ceil(constant / variance), tableSize); 
-//
-//        // standard error = sd / sqrt(n)
-//        double error =  sd / Math.sqrt(selectednTups);
-//        System.out.println("error: " + error + "sd" + sd);
-//        return (int) Math.min(Math.ceil(Math.pow(sd / errorTarget, 2)), tableSize);
+        
+        OpIterator sampleAggOverlay = new SampleAggregate(aggregate, sampleSize, tableSize, aggregate.aggregateOp());
+        sampleAggOverlay.open();
+        int result = 0;
+        while (sampleAggOverlay.hasNext()) {
+        	result = ((IntField) sampleAggOverlay.next().getField(0)).getValue();
+        }
+        sampleAggOverlay.close();
+        
+        double sd = Math.sqrt(variance);
+        double n = Math.pow(sd * 1.28 / (result * errorTarget), 2.0);
+        return (int) Math.ceil(n);
     }
     
     /**
@@ -294,7 +296,7 @@ public class SampleSelector {
         // uses statistics from Table 2 in the BlinkDB paper
         double sampleVariance = aggregate.getSampleVariance();
         double selectednTups = aggregate.getNumTups();
-        System.out.println("selected ntups: " + selectednTups + " sample size: " + sampleSize);
+
         double variance, c;
         switch (aggregate.aggregateOp()) {
             case AVG:
@@ -312,15 +314,20 @@ public class SampleSelector {
                 variance = 0; // should be unreachable
 
         }
-        while (aggregate.hasNext()) {
-        	System.out.println("Result: " + aggregate.next() + " sample size : "+ sampleSize);
-        }
         aggregate.close();
         
-//      c * 1/n = variance 
-	    System.out.println("variance" + Math.sqrt(variance));
-//	    double constant = selectednTups * variance;
-	    return variance; 
+        OpIterator sampleAggOverlay = new SampleAggregate(aggregate, sampleSize, tableSize, aggregate.aggregateOp());
+        sampleAggOverlay.open();
+        int result = 0;
+        while (sampleAggOverlay.hasNext()) {
+        	result = ((IntField) sampleAggOverlay.next().getField(0)).getValue();
+        }
+        sampleAggOverlay.close();
+        
+        
+        double sd = Math.sqrt(variance);
+        double error = (sd / Math.sqrt(sampleSize) * 1.28) / result;
+        return error * 100;
     }
 
     /**

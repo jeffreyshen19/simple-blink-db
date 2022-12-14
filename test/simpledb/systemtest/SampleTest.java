@@ -5,12 +5,9 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -21,13 +18,12 @@ import simpledb.execution.Aggregator;
 import simpledb.execution.Filter;
 import simpledb.execution.OpIterator;
 import simpledb.execution.Predicate;
+import simpledb.execution.SampleAggregate;
 import simpledb.execution.SeqScan;
 import simpledb.optimizer.QueryColumnSet;
 import simpledb.optimizer.SampleCreator;
 import simpledb.optimizer.SampleSelector;
-import simpledb.storage.BufferPool;
 import simpledb.storage.HeapFile;
-import simpledb.storage.HeapFileEncoder;
 import simpledb.storage.IntField;
 import simpledb.storage.SampleDBFile;
 import simpledb.storage.TupleDesc;
@@ -206,9 +202,10 @@ public class SampleTest {
         OpIterator filter = new Filter(p, seqscan);
         OpIterator query = new Aggregate(filter, 1, -1, Aggregator.Op.AVG);
         
-        int n = SampleSelector.selectSampleSizeError(sf.getId(), sampleSizes.get(0), 5000000,  query, 1.5);
+        int n = SampleSelector.selectSampleSizeError(sf.getId(), sampleSizes.get(0), 5000000,  query, 0.05);
         OpIterator newQuery = new Aggregate(filter, 1, -1, Aggregator.Op.AVG);
         System.out.println("selected n:" + n);
+        
         double actualError = SampleSelector.calculateError(sf.getId(), n, 5000000, newQuery);
         System.out.println("actualError: " + actualError);
     }
@@ -261,12 +258,18 @@ public class SampleTest {
         outputfile.close();
         
     }
-
+    
+    /*
+     * Generate graph data to plot requested error v actual response time
+     */
+    @Test
     public void evaluateErrorVsTime() throws Exception {
         FileWriter outputfile = new FileWriter("error-vs-time-evaluation.csv");
         String result = "";
+        double errorPercent;
         
-        for (double errorTarget = 1.0; errorTarget <= 32.0; errorTarget *= 2.0) {
+        for (double errorTarget = 1; errorTarget <= 32; errorTarget *= 2.0) {
+        	errorPercent = errorTarget / 100;
             result += errorTarget;
 
             for(int i = 0; i < queries.size(); i++) {
@@ -276,13 +279,44 @@ public class SampleTest {
                 int sampleIndex = SampleSelector.selectSample(queryColumnSet, query);
                 SampleDBFile sample = Database.getCatalog().getSampleDBFile(sampleIndex);
                 int sampleSmallestSize = sample.getSampleSizes().get(0);
-                int sampleTDSize = sample.getTupleDesc().getSize();
 
-                int n = SampleSelector.selectSampleSizeError(sampleIndex, sampleSmallestSize, sampleTDSize, query, errorTarget);
+                int n = SampleSelector.selectSampleSizeError(sampleIndex, sampleSmallestSize, 50000000, query, errorPercent);
+                
                 Database.getBufferPool().clearBufferPool();
                 int actualTime = SampleSelector.timeQueryOnSample(sampleIndex, query, n);
-                double actualError = SampleSelector.calculateError(sampleIndex, sampleSmallestSize, sampleTDSize, query);
                 result += "," + actualTime;
+            }
+            result += "\n";
+        }
+        outputfile.write(result);
+        outputfile.close();
+
+    }
+    
+    /*
+     * Generate graph data to plot requested error v actual response time
+     */
+    @Test
+    public void evaluateRequestedErrorVsActualError() throws Exception {
+        FileWriter outputfile = new FileWriter("expected-error-vs-error-evaluation.csv");
+        String result = "";
+        double errorPercent;
+        
+        for (double errorTarget = 1; errorTarget <= 16; errorTarget *= 2.0) {
+        	errorPercent = errorTarget / 100;
+            result += errorTarget;
+
+            for(int i = 0; i < queries.size(); i++) {
+                OpIterator query = queries.get(i); 
+                QueryColumnSet queryColumnSet = new QueryColumnSet(query);
+
+                int sampleIndex = SampleSelector.selectSample(queryColumnSet, query);
+                SampleDBFile sample = Database.getCatalog().getSampleDBFile(sampleIndex);
+                int sampleSmallestSize = sample.getSampleSizes().get(0);
+
+                int n = SampleSelector.selectSampleSizeError(sampleIndex, sampleSmallestSize, 50000000, query, errorPercent);
+                Database.getBufferPool().clearBufferPool();
+                double actualError = SampleSelector.calculateError(sampleIndex, n, 50000000, query);
                 result += "," + actualError;
             }
             result += "\n";
@@ -292,5 +326,42 @@ public class SampleTest {
 
     }
      
+    /*
+     * Generate graph data to compare SimpleDB vs SimpleBlinkDB 
+     * 
+     */
+    @Test
+    public void evaluateSimpleDBvSBDB() throws Exception {
+        FileWriter outputfile = new FileWriter("simpledb-latency-vs-sbdb-latency.csv");
+        String result = "";
+        
+        for (int i = 0; i < queries.size(); i++) {
+        	result += i;
+        	OpIterator query = queries.get(i);
+            
+            // select n based on error of 1%
+            QueryColumnSet queryColumnSet = new QueryColumnSet(query);
+            int sampleIndex = SampleSelector.selectSample(queryColumnSet, query);
+            Database.getBufferPool().clearBufferPool();
+            
+            SampleDBFile sample = Database.getCatalog().getSampleDBFile(sampleIndex);
+            int n = SampleSelector.selectSampleSizeLatency(sf.getId(), sampleSizes, query, 200);
+            
+            // time it on BlinkDB 
+            OpIterator newQuery = SampleSelector.modifyOperatorSampleFamily(sampleIndex, query, Math.abs(n));
+            OpIterator sampleQuery = new SampleAggregate(newQuery, n, 50000000, ((Aggregate) newQuery).aggregateOp());
+            sampleQuery.open();
+            while (sampleQuery.hasNext()) {
+            	result += "," + sampleQuery.next().toString();
+            }
+            
+            result += "\n";
+        }
+        
+        outputfile.write(result);
+        outputfile.close();
+
+    }
+    
     
 }

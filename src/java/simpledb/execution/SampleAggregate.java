@@ -76,17 +76,18 @@ public class SampleAggregate extends Operator {
             } else {
                 aggVal = ((IntField) next.getField(0)).getValue();
             }
-
+            
+//            System.out.println("aggVal: " + aggVal + " sample Size: " + sampleSize + " op : " + ((Aggregate) child).aggregateOp());
             // rescale agg value
             switch(op) {
                 case SUM:
-                    result = (int) (aggVal / sampleSize * totalTups);
+                    result = (int) (aggVal /sampleSize * totalTups);
                     break;
                 case AVG:
                     result = aggVal;
                     break;
                 case COUNT:
-                    result = (int) (aggVal / sampleSize * totalTups);
+                    result = (int) (Math.min(aggVal, sampleSize) / sampleSize * totalTups);
                     break;
                 default:
                     throw new DbException("Sample Aggregate only supports SUM, AVG, COUNT");

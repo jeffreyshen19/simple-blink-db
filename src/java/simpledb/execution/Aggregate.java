@@ -122,6 +122,9 @@ public class Aggregate extends Operator {
             TransactionAbortedException {
         super.open();
         child.open();
+        if (child.getTupleDesc().getFieldType(afield).equals(Type.INT_TYPE)) {
+        	((IntegerAggregator) aggregator).resetMergedTuples(0);
+        }
         
         // Add all tuples into the aggregator
         while(child.hasNext()) aggregator.mergeTupleIntoGroup(child.next());

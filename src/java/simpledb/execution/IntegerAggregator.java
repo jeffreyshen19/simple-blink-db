@@ -51,6 +51,10 @@ public class IntegerAggregator implements Aggregator {
         
         this.groups = new HashMap<>();
     }
+    
+    public void resetMergedTuples(int val) {
+    	this.nTups = val;
+    }
 
     /**
      * Merge a new tuple into the aggregate, grouping as indicated in the
