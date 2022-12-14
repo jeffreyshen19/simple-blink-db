@@ -71,5 +71,45 @@ for(int i = 0; i < stratifiedSamples.size(); i++){
       Database.getBufferPool().flushAllPages();
    }
 }
+```
 
 Now we have all our samples and are ready to run! Sample generation can take several minutes to an hour, depending on how large the original file is. In the future, since the sample files are saved to disk, the lengthy process of sample generation will not have to be run again. 
+
+### Executing Queries 
+
+To execute a query, we first need to convert it into an `OpIterator` tree using Parser. For instance, `SELECT AVG(quantity) FROM table` will be converted into:
+
+```
+OpIterator seqscan = new SeqScan(new TransactionId(), hf.getId(), ""); // hf is the table we are reading
+OpIterator query = new Aggregate(seqscan, 1, -1, Aggregator.Op.AVG); // 1 corresponds to quantity, -1 indicates no grouping;
+```
+
+Then, our system needs to determine the correct sample family: 
+
+```
+QueryColumnSet qcs = new QueryColumnSet(query);
+int tableid = SampleSelector.selectSample(qcs, query);
+```
+
+This outputs `tableid`, the sample family our system determines the query should execute on. Next, we determine `n`, the size of the family. If we are given an error constraint, we can use this code: 
+
+```
+int tableSize = 50000000; // number of tuples in the actual table
+int sampleSize = sampleSizes.get(0); // the size of the small sample we want to determine error on
+double errorTarget = 1.5; // target standard deviation
+int n = SampleSelector.selectSampleSizeError(tableid, sampleSize, tableSize,  query, errorTarget);
+```
+
+If we are given a latency constraint, we can use this code: 
+```
+int targetTime = 50; // the latency constraint, in ms
+int n = SampleSelector.selectSampleSizeLatency(tableid, sampleSizes, query, targetTime); 
+```
+
+Now, we have the sample family `tableid` and the sample size `n`. Finally, we can run the query. 
+
+```
+OpIterator modifiedQuery = new SampleAggregate(SampleSelector.modifyOperatorSampleFamily(tableid, query, n), n, tableSize, Aggregator.Op.AVG);
+```
+
+This returns `modifiedQuery`, the OpIterator that will run over the sample and return the correct result. This can be executed using the standard `OpIterator` iteration methods. 
